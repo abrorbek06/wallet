@@ -1,4 +1,4 @@
-# app
+# Wallet
 
 A new Flutter project.
 
