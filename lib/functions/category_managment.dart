@@ -64,7 +64,7 @@ class CategoryManager {
     ),
     Category(
       id: '9',
-      name: 'Bills',
+      name: 'Payments',
       icon: Icons.receipt,
       color: Colors.orange,
       type: 'expense',
@@ -229,7 +229,7 @@ class CategoryManager {
       ),
       Category(
         id: '9',
-        name: 'Bills',
+        name: 'Payments',
         icon: Icons.receipt,
         color: Colors.orange,
         type: 'expense',
