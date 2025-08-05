@@ -1,6 +1,5 @@
 import 'package:app/functions/category_managment.dart';
 import 'package:app/models/models.dart';
-import 'package:app/screens/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 
 import '../../../models/themes.dart';
