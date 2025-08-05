@@ -45,7 +45,7 @@ class CategoryManager {
       id: '6',
       name: 'Food',
       icon: Icons.restaurant,
-      color: Colors.red,
+      color: Colors.lime,
       type: 'expense',
     ),
     Category(
@@ -71,23 +71,23 @@ class CategoryManager {
     ),
     Category(
       id: '10',
-      name: 'Entertainment',
-      icon: Icons.movie,
-      color: Colors.green,
-      type: 'expense',
-    ),
-    Category(
-      id: '11',
       name: 'Health',
       icon: Icons.local_hospital,
       color: Colors.red,
       type: 'expense',
     ),
     Category(
-      id: '12',
+      id: '11',
       name: 'Education',
       icon: Icons.school,
       color: Colors.indigo,
+      type: 'expense',
+    ),
+    Category(
+      id: '12',
+      name: 'Other',
+      icon: Icons.movie,
+      color: Colors.green,
       type: 'expense',
     ),
   ];
@@ -236,23 +236,23 @@ class CategoryManager {
       ),
       Category(
         id: '10',
-        name: 'Entertainment',
-        icon: Icons.movie,
-        color: Colors.green,
-        type: 'expense',
-      ),
-      Category(
-        id: '11',
         name: 'Health',
         icon: Icons.local_hospital,
         color: Colors.red,
         type: 'expense',
       ),
       Category(
-        id: '12',
+        id: '11',
         name: 'Education',
         icon: Icons.school,
         color: Colors.indigo,
+        type: 'expense',
+      ),
+      Category(
+        id: '12',
+        name: 'Other',
+        icon: Icons.category,
+        color: Colors.green,
         type: 'expense',
       ),
     ]);

@@ -1,0 +1,1 @@
+ /Users/abror/Projects/wallet/.dart_tool/flutter_build/64166a6dc78a52230653679aac4c7acd/native_assets.json: 

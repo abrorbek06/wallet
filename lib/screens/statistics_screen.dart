@@ -1300,7 +1300,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
       itemCount: allTransactions.length,
       itemBuilder: (context, index) {
         final transaction = allTransactions[index];
-
         return Dismissible(
           key: Key(transaction.id),
           direction: DismissDirection.endToStart,
