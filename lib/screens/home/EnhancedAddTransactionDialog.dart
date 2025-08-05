@@ -204,6 +204,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                     value: category.id,
                     child: Row(
                       children: [
+                        
                         Icon(
                           category.icon,
                           color: category.color,
