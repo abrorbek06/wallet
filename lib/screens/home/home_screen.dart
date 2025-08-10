@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:app/screens/statistic/statistics_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/storage.dart';
@@ -7,7 +8,6 @@ import '../../functions/category_managment.dart';
 import '../../models/models.dart';
 import '../../models/themes.dart';
 import '../settings/settings_screen.dart';
-import '../statistics_screen.dart';
 import 'EnhancedAddTransactionDialog.dart';
 
 class HomeScreen extends StatefulWidget {
