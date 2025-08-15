@@ -62,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-
   @override
   void initState() {
     super.initState();
@@ -330,10 +329,11 @@ class _HomeScreenState extends State<HomeScreen> {
           SizedBox(height: 16),
 
           // Transaction List
-          ...transactions
-              .take(5)
-              .map((transaction) => _buildTransactionItem(transaction))
-              ,
+          ...(() {
+            final sorted = List<Transaction>.from(transactions)
+              ..sort((a, b) => b.date.compareTo(a.date));
+            return sorted.take(5).map(_buildTransactionItem).toList();
+          })(),
         ],
       ),
     );
@@ -343,13 +343,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final isIncome = transaction.type == TransactionType.income;
     final category =
         CategoryManager.getCategoryById(transaction.categoryId) ??
-            Category(
-              id: '',
-              name: 'Other',
-              icon: Icons.category,
-              color: Colors.grey,
-              type: isIncome ? 'income' : 'expense',
-            );
+        Category(
+          id: '',
+          name: 'Other',
+          icon: Icons.category,
+          color: Colors.grey,
+          type: isIncome ? 'income' : 'expense',
+        );
 
     return Dismissible(
       key: Key(transaction.id),
@@ -366,28 +366,45 @@ class _HomeScreenState extends State<HomeScreen> {
       confirmDismiss: (direction) async {
         return await showDialog(
           context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: ThemeProvider.getBackgroundColor(),
-            title: Text('Delete Transaction', style: TextStyle(color: ThemeProvider.getTextColor())),
-            content: Text('Are you sure you want to delete this transaction?', style: TextStyle(color: ThemeProvider.getTextColor())),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text('Cancel', style: TextStyle(color: ThemeProvider.getPrimaryColor())),
+          builder:
+              (context) => AlertDialog(
+                backgroundColor: ThemeProvider.getBackgroundColor(),
+                title: Text(
+                  'Delete Transaction',
+                  style: TextStyle(color: ThemeProvider.getTextColor()),
+                ),
+                content: Text(
+                  'Are you sure you want to delete this transaction?',
+                  style: TextStyle(color: ThemeProvider.getTextColor()),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: ThemeProvider.getPrimaryColor()),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: Text(
+                      'Delete',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: Text('Delete', style: TextStyle(color: Colors.white)),
-              ),
-            ],
-          ),
         );
       },
       onDismissed: (direction) {
         setState(() {
           transactions.removeWhere((t) => t.id == transaction.id);
-          saveTransactions(transactions); // shared_preferences dan ham o‘chirilsin
+          saveTransactions(
+            transactions,
+          ); // shared_preferences dan ham o‘chirilsin
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
