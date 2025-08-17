@@ -5,6 +5,7 @@ import 'package:app/screens/settings/widgets/theme_section.dart';
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
 import '../../models/themes.dart';
+import '../../functions/category_managment.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String currentTheme;
@@ -25,6 +26,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    CategoryManager.loadSavedCategories();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,10 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const SizedBox(height: 24),
-          InfoSection(
-            onRateApp: _rateApp,
-            onHelpPressed: _showAboutDialog,
-          ),
+          InfoSection(onRateApp: _rateApp, onHelpPressed: _showAboutDialog),
         ],
       ),
     );

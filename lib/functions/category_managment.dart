@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../models/category_storage.dart';
 
 class CategoryManager {
   static List<Category> incomeCategories = [
@@ -93,21 +94,30 @@ class CategoryManager {
   ];
 
   // Add a new category
-  static void addCategory(Category category) {
+  static Future<void> addCategory(Category category) async {
     if (category.isIncome) {
       incomeCategories.add(category);
     } else {
       expenseCategories.add(category);
     }
+    await saveCategories(incomeCategories, expenseCategories);
   }
 
   // Remove a category by ID and type
-  static void removeCategory(String categoryId, bool isIncome) {
+  static Future<void> removeCategory(String categoryId, bool isIncome) async {
     if (isIncome) {
       incomeCategories.removeWhere((cat) => cat.id == categoryId);
     } else {
       expenseCategories.removeWhere((cat) => cat.id == categoryId);
     }
+    await saveCategories(incomeCategories, expenseCategories);
+  }
+
+  static Future<void> loadSavedCategories() async {
+    final loadedIncome = await loadCategories(true);
+    final loadedExpense = await loadCategories(false);
+    if (loadedIncome.isNotEmpty) incomeCategories = loadedIncome;
+    if (loadedExpense.isNotEmpty) expenseCategories = loadedExpense;
   }
 
   // Get category by ID
@@ -146,13 +156,18 @@ class CategoryManager {
 
   // Check if category exists
   static bool categoryExists(String name, String type) {
-    List<Category> categories = type == 'income' ? incomeCategories : expenseCategories;
-    return categories.any((cat) => cat.name.toLowerCase() == name.toLowerCase());
+    List<Category> categories =
+        type == 'income' ? incomeCategories : expenseCategories;
+    return categories.any(
+      (cat) => cat.name.toLowerCase() == name.toLowerCase(),
+    );
   }
 
   // Get category count
   static int getCategoryCount(String type) {
-    return type == 'income' ? incomeCategories.length : expenseCategories.length;
+    return type == 'income'
+        ? incomeCategories.length
+        : expenseCategories.length;
   }
 
   // Clear all categories (for data reset)
@@ -262,22 +277,25 @@ class CategoryManager {
   static Map<String, dynamic> exportCategories() {
     return {
       'incomeCategories': incomeCategories.map((cat) => cat.toJson()).toList(),
-      'expenseCategories': expenseCategories.map((cat) => cat.toJson()).toList(),
+      'expenseCategories':
+          expenseCategories.map((cat) => cat.toJson()).toList(),
     };
   }
 
   // Import categories from JSON
   static void importCategories(Map<String, dynamic> data) {
     if (data.containsKey('incomeCategories')) {
-      incomeCategories = (data['incomeCategories'] as List)
-          .map((json) => Category.fromJson(json))
-          .toList();
+      incomeCategories =
+          (data['incomeCategories'] as List)
+              .map((json) => Category.fromJson(json))
+              .toList();
     }
 
     if (data.containsKey('expenseCategories')) {
-      expenseCategories = (data['expenseCategories'] as List)
-          .map((json) => Category.fromJson(json))
-          .toList();
+      expenseCategories =
+          (data['expenseCategories'] as List)
+              .map((json) => Category.fromJson(json))
+              .toList();
     }
   }
 }

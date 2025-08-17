@@ -16,10 +16,12 @@ class CategoryManagementDialog extends StatefulWidget {
   });
 
   @override
-  _CategoryManagementDialogState createState() => _CategoryManagementDialogState();
+  _CategoryManagementDialogState createState() =>
+      _CategoryManagementDialogState();
 }
 
-class _CategoryManagementDialogState extends State<CategoryManagementDialog> with TickerProviderStateMixin {
+class _CategoryManagementDialogState extends State<CategoryManagementDialog>
+    with TickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -56,7 +58,11 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog> wit
               ),
               child: Row(
                 children: [
-                  Icon(Icons.category, color: ThemeProvider.getPrimaryColor(), size: 24),
+                  Icon(
+                    Icons.category,
+                    color: ThemeProvider.getPrimaryColor(),
+                    size: 24,
+                  ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -79,7 +85,9 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog> wit
             // Tab Bar
             Container(
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.3))),
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                ),
               ),
               child: TabBar(
                 controller: _tabController,
@@ -87,10 +95,7 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog> wit
                 unselectedLabelColor: Colors.grey[400],
                 indicatorColor: ThemeProvider.getPrimaryColor(),
                 tabs: [
-                  Tab(
-                    icon: Icon(Icons.add_circle),
-                    text: 'Income Categories',
-                  ),
+                  Tab(icon: Icon(Icons.add_circle), text: 'Income Categories'),
                   Tab(
                     icon: Icon(Icons.remove_circle),
                     text: 'Expense Categories',
@@ -116,7 +121,11 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog> wit
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _showAddCategoryDialog(context, _tabController.index == 0),
+                  onPressed:
+                      () => _showAddCategoryDialog(
+                        context,
+                        _tabController.index == 0,
+                      ),
                   icon: Icon(Icons.add, color: Colors.white),
                   label: Text(
                     'Add New Category',
@@ -175,7 +184,9 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog> wit
               ),
               IconButton(
                 icon: Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _showDeleteCategoryDialog(context, category, isIncome),
+                onPressed:
+                    () =>
+                        _showDeleteCategoryDialog(context, category, isIncome),
                 tooltip: 'Delete Category',
               ),
             ],
@@ -188,97 +199,102 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog> wit
   void _showAddCategoryDialog(BuildContext context, bool isIncome) {
     showDialog(
       context: context,
-      builder: (context) => AddCategoryDialog(
-        onAddCategory: (category) {
-          widget.onAddCategory(category);
-          setState(() {}); // Refresh the dialog
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Category "${category.name}" added successfully!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
-            ),
-          );
-        },
-        isIncome: isIncome,
-      ),
-    );
-  }
-
-  void _showDeleteCategoryDialog(BuildContext context, Category category, bool isIncome) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: ThemeProvider.getCardColor(),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Delete Category',
-          style: TextStyle(
-            color: ThemeProvider.getTextColor(),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.warning_amber_rounded,
-              color: Colors.orange,
-              size: 48,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Are you sure you want to delete "${category.name}" category?',
-              style: TextStyle(
-                color: ThemeProvider.getTextColor(),
-                fontSize: 16,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 8),
-            Text(
-              'This action cannot be undone.',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Colors.grey[400]),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              widget.onRemoveCategory(category.id, isIncome);
+      builder:
+          (context) => AddCategoryDialog(
+            onAddCategory: (category) async {
+              await CategoryManager.addCategory(category);
               setState(() {}); // Refresh the dialog
-              Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Category "${category.name}" deleted successfully'),
-                  backgroundColor: Colors.red,
+                  content: Text(
+                    'Category "${category.name}" added successfully!',
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+            isIncome: isIncome,
+          ),
+    );
+  }
+
+  void _showDeleteCategoryDialog(
+    BuildContext context,
+    Category category,
+    bool isIncome,
+  ) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            backgroundColor: ThemeProvider.getCardColor(),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(
+              'Delete Category',
+              style: TextStyle(
+                color: ThemeProvider.getTextColor(),
+                fontWeight: FontWeight.w600,
               ),
             ),
-            child: Text(
-              'Delete',
-              style: TextStyle(color: Colors.white),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 48,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Are you sure you want to delete "${category.name}" category?',
+                  style: TextStyle(
+                    color: ThemeProvider.getTextColor(),
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'This action cannot be undone.',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                ),
+              ],
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey[400]),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  await CategoryManager.removeCategory(category.id, isIncome);
+                  setState(() {}); // Refresh the dialog
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Category "${category.name}" deleted successfully',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text('Delete', style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
