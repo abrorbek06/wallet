@@ -1,5 +1,17 @@
 
+<<<<<<< Updated upstream:Comment Codes/Statistic_screen_code
 class StatisticsScreens extends StatefulWidget {
+=======
+import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+
+import '../models/models.dart';
+import '../functions/category_managment.dart';
+import '../models/storage.dart';
+import '../models/themes.dart';
+
+class StatisticsScreen extends StatefulWidget {
+>>>>>>> Stashed changes:lib/screens/statistics_screen.dart
   final List<Transaction> transactions;
 
   const StatisticsScreens({

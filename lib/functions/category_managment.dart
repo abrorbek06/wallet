@@ -79,7 +79,7 @@ class CategoryManager {
     ),
     Category(
       id: '11',
-      name: 'Education',
+      name: 'Home',
       icon: Icons.school,
       color: Colors.indigo,
       type: 'expense',
