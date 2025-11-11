@@ -1,7 +1,13 @@
 import 'dart:convert';
 
+import 'package:app/screens/daily/daily_screen.dart';
+import 'package:app/screens/home/widgets/all_scheduled_transactions_widget.dart';
 import 'package:app/screens/home/widgets/enhanced_add_transaction_dialog.dart';
+import 'package:app/screens/home/widgets/pending_balance_card.dart';
+import 'package:app/screens/home/widgets/pending_confirmation_dialog.dart';
+import 'package:app/screens/home/widgets/pending_transactions_widget.dart';
 import 'package:app/screens/statistic/statistics_screen.dart';
+import 'package:app/services/scheduled_transaction_processor.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/storage.dart';
@@ -19,32 +25,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  List<Transaction> transactions = [
-    Transaction(
-      id: '1',
-      title: 'Monthly Salary',
-      amount: 5000.00,
-      date: DateTime(2024, 1, 1),
-      type: TransactionType.income,
-      categoryId: "1",
-    ),
-    Transaction(
-      id: '2',
-      title: 'Rent Payment',
-      amount: -1500.00,
-      date: DateTime(2024, 1, 5),
-      type: TransactionType.expense,
-      categoryId: "1",
-    ),
-    Transaction(
-      id: '3',
-      title: 'Grocery Shopping',
-      amount: -350.00,
-      date: DateTime(2024, 1, 8),
-      type: TransactionType.expense,
-      categoryId: "1",
-    ),
-  ];
+  final ScheduledTransactionProcessor _scheduledProcessor =
+      ScheduledTransactionProcessor();
+
+  List<Transaction> transactions = [];
+  double? _dailyLimit;
 
   Future<void> saveTransactions(List<Transaction> transactions) async {
     final prefs = await SharedPreferences.getInstance();
@@ -60,6 +45,48 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       transactions = loaded;
     });
+
+    // Process scheduled transactions and apply notifications
+    await _processScheduledTransactions();
+    // Load daily spending limit (if any)
+    final limit = await loadDailyLimit();
+    setState(() {
+      _dailyLimit = limit;
+    });
+    // If daily limit exceeded and not warned today, show a SnackBar
+    if (_dailyLimit != null) {
+      final today = DateTime.now();
+      final todayExpenses = transactions
+          .where((t) {
+            final d = t.date;
+            final sameDay =
+                d.year == today.year &&
+                d.month == today.month &&
+                d.day == today.day;
+            return sameDay &&
+                t.type == TransactionType.expense &&
+                t.isSettled &&
+                !t.isLoan;
+          })
+          .fold(0.0, (sum, t) => sum + t.amount);
+
+      if (todayExpenses > _dailyLimit!) {
+        final lastWarn = await loadDailyLimitWarnDate();
+        final todayIso = DateTime.now().toIso8601String().substring(0, 10);
+        if (lastWarn != todayIso) {
+          // show warning
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('You have exceeded your daily spending limit.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          });
+          await saveDailyLimitWarnDate(todayIso);
+        }
+      }
+    }
   }
 
   @override
@@ -84,6 +111,9 @@ class _HomeScreenState extends State<HomeScreen> {
           // Home Screen
           _buildHomeScreen(),
 
+          // Daily Screen
+          DailyScreen(transactions: transactions),
+
           // Statistics Screen
           StatisticsScreen(transactions: transactions),
 
@@ -101,51 +131,166 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
       floatingActionButton:
-          _currentIndex == 0 ? _buildFloatingActionButton() : null,
+          (_currentIndex == 0 || _currentIndex == 1)
+              ? _buildFloatingActionButton()
+              : null,
     );
   }
 
   Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: BoxDecoration(
+    final today = DateTime.now();
+    final todayExpenses = transactions
+        .where((t) {
+          final d = t.date;
+          final sameDay =
+              d.year == today.year &&
+              d.month == today.month &&
+              d.day == today.day;
+          return sameDay &&
+              t.type == TransactionType.expense &&
+              t.isSettled &&
+              !t.isLoan;
+        })
+        .fold(0.0, (sum, t) => sum + t.amount);
+
+    Widget dailyLimitBar() {
+      final limit = _dailyLimit;
+      if (limit == null) return SizedBox.shrink();
+      final progress =
+          (limit > 0) ? (todayExpenses / limit).clamp(0.0, 1.0) : 0.0;
+      final exceeded = todayExpenses > limit;
+      return Container(
         color: ThemeProvider.getCardColor(),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, -5),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Today: \$${todayExpenses.toStringAsFixed(2)} / \$${limit.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color:
+                          exceeded ? Colors.red : ThemeProvider.getTextColor(),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  LinearProgressIndicator(
+                    value: progress,
+                    color:
+                        exceeded ? Colors.red : ThemeProvider.getPrimaryColor(),
+                    backgroundColor: ThemeProvider.getPrimaryColor()
+                        .withOpacity(0.12),
+                    minHeight: 6,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: 12),
+            // OutlinedButton(
+            //   onPressed: () async {
+            //     final result = await showDialog<double?>(
+            //       context: context,
+            //       builder: (context) {
+            //         final controller = TextEditingController(
+            //           text: _dailyLimit?.toStringAsFixed(2) ?? '',
+            //         );
+            //         return AlertDialog(
+            //           backgroundColor: ThemeProvider.getCardColor(),
+            //           title: Text(
+            //             'Set Daily Limit',
+            //             style: TextStyle(color: ThemeProvider.getTextColor()),
+            //           ),
+            //           content: TextField(
+            //             controller: controller,
+            //             keyboardType: TextInputType.numberWithOptions(
+            //               decimal: true,
+            //             ),
+            //             decoration: InputDecoration(
+            //               hintText: 'Enter limit amount',
+            //             ),
+            //           ),
+            //           actions: [
+            //             TextButton(
+            //               onPressed: () => Navigator.pop(context, null),
+            //               child: Text('Cancel'),
+            //             ),
+            //             TextButton(
+            //               onPressed: () {
+            //                 final text = controller.text.trim();
+            //                 if (text.isEmpty) {
+            //                   return Navigator.pop(context, null);
+            //                 }
+            //                 final val = double.tryParse(text);
+            //                 Navigator.pop(context, val);
+            //               },
+            //               child: Text('Save'),
+            //             ),
+            //           ],
+            //         );
+            //       },
+            //     );
+
+            //     if (result != null) {
+            //       await saveDailyLimit(result);
+            //       setState(() => _dailyLimit = result);
+            //     }
+            //   },
+            //   child: Text('Limit'),
+            // ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        dailyLimitBar(),
+        Container(
+          decoration: BoxDecoration(
+            color: ThemeProvider.getCardColor(),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: Offset(0, -5),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: ThemeProvider.getPrimaryColor(),
-        unselectedItemColor: Colors.grey[400],
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            label: 'Statistics',
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            selectedItemColor: ThemeProvider.getPrimaryColor(),
+            unselectedItemColor: Colors.grey[400],
+            selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
+            items: [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.calendar_today),
+                label: 'Daily',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.bar_chart),
+                label: 'Statistics',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.settings),
+                label: 'Settings',
+              ),
+            ],
           ),
-          // BottomNavigationBarItem(
-          //   icon: Icon(Icons.credit_card),
-          //   label: 'Cards',
-          // ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -158,11 +303,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeScreen() {
-    final totalIncome = transactions
+    // Only include settled (confirmed) transactions in the current balance.
+    // Scheduled transactions are not counted until they are confirmed and marked settled.
+    final confirmedTransactions =
+        transactions.where((t) => t.isSettled).toList();
+
+    final totalIncome = confirmedTransactions
         .where((t) => t.type == TransactionType.income)
         .fold(0.0, (sum, t) => sum + t.amount);
 
-    final totalExpense = transactions
+    final totalExpense = confirmedTransactions
         .where((t) => t.type == TransactionType.expense)
         .fold(0.0, (sum, t) => sum + t.amount);
 
@@ -191,118 +341,167 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SizedBox(height: 30),
 
-          // Balance Card
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: ThemeProvider.getCardGradient(true),
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: ThemeProvider.getPrimaryColor().withOpacity(0.3),
-                  blurRadius: 15,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Balance Cards Row - Scrollable horizontally
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                Text(
-                  'Total Balance',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 16,
+                // Total Balance Card
+                Container(
+                  width: 340,
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: ThemeProvider.getCardGradient(true),
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: ThemeProvider.getPrimaryColor().withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
                   ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  "\$${balance.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: balance.toStringAsFixed(2).length >= 9 ? 30 : 36,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Current Balance',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        "\$${balance.toStringAsFixed(2)}",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize:
+                              balance.toStringAsFixed(2).length >= 9 ? 30 : 36,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      Row(
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.trending_up,
-                                color: Colors.green,
-                                size: 16,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Income',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 14,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.trending_up,
+                                      color: Colors.green,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Income',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.8),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
+                                Text(
+                                  '\$${totalIncome.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          Text(
-                            '\$${totalIncome.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.trending_down,
+                                      color: Colors.red,
+                                      size: 16,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Expenses',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.8),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '\$${totalExpense.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.trending_down,
-                                color: Colors.red,
-                                size: 16,
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Expenses',
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            '\$${totalExpense.toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                SizedBox(width: 16),
+
+                // Pending Balance Card
+                PendingBalanceCard(allTransactions: transactions),
               ],
             ),
           ),
           SizedBox(height: 30),
+
+          // Pending Confirmations Section
+          PendingTransactionsWidget(
+            pendingTransactions:
+                transactions.where((t) => t.isPending && !t.isSettled).toList(),
+            onTransactionTap: (tx) {
+              _showPendingConfirmationDialog(tx);
+            },
+            onConfirmed: (tx) {
+              _confirmPendingTransactionDirectly(tx);
+            },
+            onRejected: (tx) {
+              _rejectPendingTransactionDirectly(tx);
+            },
+          ),
+
+          SizedBox(height: 12),
+
+          // All Scheduled Transactions with Confirm/Cancel buttons
+          AllScheduledTransactionsWidget(
+            scheduledTransactions: transactions,
+            onConfirmed: (tx) {
+              _confirmPendingTransactionDirectly(tx);
+            },
+            onRejected: (tx) {
+              _rejectPendingTransactionDirectly(tx);
+            },
+          ),
+
+          // Scheduled & Loans Section
+          // ScheduledLoansWidget(
+          //   transactions: transactions,
+          //   onTransactionsUpdated: () {
+          //     setState(() {});
+          //   },
+          // ),
 
           // Recent Transactions
           Row(
@@ -328,9 +527,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SizedBox(height: 16),
 
-          // Transaction List
+          // Transaction List - show most recent confirmed/non-scheduled transactions first
           ...(() {
-            final sorted = List<Transaction>.from(transactions)
+            final filtered =
+                transactions
+                    .where((t) => !(t.isScheduled && !t.isSettled))
+                    .toList();
+            final sorted = List<Transaction>.from(filtered)
               ..sort((a, b) => b.date.compareTo(a.date));
             return sorted.take(5).map(_buildTransactionItem).toList();
           })(),
@@ -505,12 +708,36 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _processScheduledTransactions() async {
+    try {
+      final activated = await _scheduledProcessor.processScheduledTransactions(
+        transactions,
+      );
+      if (activated.isNotEmpty) {
+        // Merge activated scheduled transactions
+        for (var activatedTx in activated) {
+          final idx = transactions.indexWhere((t) => t.id == activatedTx.id);
+          if (idx != -1) {
+            transactions[idx] = activatedTx;
+          }
+        }
+        await saveTransactions(transactions);
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error processing scheduled transactions: $e');
+    }
+  }
+
   void _addTransaction(Transaction transaction) {
     setState(() {
       transactions.add(transaction);
     });
 
     saveTransactions(transactions);
+
+    // Process scheduled transactions after adding
+    _processScheduledTransactions();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -529,16 +756,83 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Card management methods
-  void _addCard(CreditCard card) {
-    setState(() {
-      cards.add(card);
-    });
+  void _showPendingConfirmationDialog(Transaction transaction) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => PendingConfirmationDialog(
+            transaction: transaction,
+            onConfirmed: () async {
+              // User confirmed: YES, this transaction happened
+              await _scheduledProcessor.confirmPendingTransaction(
+                transactions,
+                transaction.id,
+              );
+              // Reload transactions from storage
+              _loadTransactions();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Transaction confirmed! Balance updated.'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            onRejected: () async {
+              // User rejected: NO, this transaction didn't happen
+              await _scheduledProcessor.rejectPendingTransaction(
+                transactions,
+                transaction.id,
+              );
+              // Reload transactions from storage
+              _loadTransactions();
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Transaction rejected and removed.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+    );
+  }
+
+  Future<void> _confirmPendingTransactionDirectly(
+    Transaction transaction,
+  ) async {
+    // Direct confirmation without dialog - from button tap
+    await _scheduledProcessor.confirmPendingTransaction(
+      transactions,
+      transaction.id,
+    );
+    _loadTransactions();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Card added successfully!'),
+        content: Text('✓ ${transaction.title} confirmed! Balance updated.'),
         backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _rejectPendingTransactionDirectly(
+    Transaction transaction,
+  ) async {
+    // Direct rejection without dialog - from button tap
+    await _scheduledProcessor.rejectPendingTransaction(
+      transactions,
+      transaction.id,
+    );
+    _loadTransactions();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('✗ ${transaction.title} rejected.'),
+        backgroundColor: Colors.orange,
         duration: Duration(seconds: 2),
       ),
     );
