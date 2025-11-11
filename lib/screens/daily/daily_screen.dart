@@ -44,15 +44,15 @@ class _DailyScreenState extends State<DailyScreen> {
   List<Map<String, dynamic>> _getPastDaysTransactions() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     // Group expenses by date (excluding today)
     Map<DateTime, List<Transaction>> grouped = {};
-    
+
     for (var t in widget.transactions) {
       final txDate = DateTime(t.date.year, t.date.month, t.date.day);
       final isExpense = t.type == TransactionType.expense;
       final isConfirmed = !t.isScheduled || t.isSettled;
-      
+
       // Include only past days, not today
       if (txDate.isBefore(today) && isExpense && isConfirmed) {
         if (!grouped.containsKey(txDate)) {
@@ -61,20 +61,26 @@ class _DailyScreenState extends State<DailyScreen> {
         grouped[txDate]!.add(t);
       }
     }
-    
+
     // Convert to list of maps with date and total
-    final result = grouped.entries.map((entry) {
-      final total = entry.value.fold<double>(0.0, (sum, t) => sum + t.amount);
-      return {
-        'date': entry.key,
-        'total': total,
-        'transactions': entry.value,
-      };
-    }).toList();
-    
+    final result =
+        grouped.entries.map((entry) {
+          final total = entry.value.fold<double>(
+            0.0,
+            (sum, t) => sum + t.amount,
+          );
+          return {
+            'date': entry.key,
+            'total': total,
+            'transactions': entry.value,
+          };
+        }).toList();
+
     // Sort by date descending (newest first)
-    result.sort((a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime));
-    
+    result.sort(
+      (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
+    );
+
     return result;
   }
 
@@ -84,12 +90,6 @@ class _DailyScreenState extends State<DailyScreen> {
       0.0,
       (sum, t) => sum + t.amount,
     );
-  }
-
-  /// Check if limit exceeded
-  bool _isLimitExceeded() {
-    if (_dailyLimit == null) return false;
-    return _getTodaySpent() > _dailyLimit!;
   }
 
   /// Get remaining budget (or overspent amount)
@@ -104,23 +104,67 @@ class _DailyScreenState extends State<DailyScreen> {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(Duration(days: 1));
     final dateToCheck = DateTime(date.year, date.month, date.day);
-    
+
     if (dateToCheck == yesterday) {
       return 'Yesterday';
     }
-    
+
     // Show day of week and date
     final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final dayName = dayNames[dateToCheck.weekday - 1];
     return '$dayName, ${dateToCheck.month}/${dateToCheck.day}';
   }
 
+  /// Get color based on spending percentage
+  /// 0-50%: Green, 50-70%: Yellow, 70-85%: Orange, 85-95%: Red-Orange, 95%+: Red
+  Color _getStatusColor(double percentage) {
+    if (percentage <= 0.5) {
+      return Colors.green; // Green - Safe
+    } else if (percentage <= 0.7) {
+      // Green to Yellow gradient
+      final t = (percentage - 0.5) / 0.2;
+      return Color.lerp(Colors.green, Colors.amber, t) ?? Colors.amber;
+    } else if (percentage <= 0.85) {
+      // Yellow to Orange gradient
+      final t = (percentage - 0.7) / 0.15;
+      return Color.lerp(Colors.amber, Colors.orange, t) ?? Colors.orange;
+    } else if (percentage <= 0.95) {
+      // Orange to Red-Orange gradient
+      final t = (percentage - 0.85) / 0.1;
+      return Color.lerp(Colors.orange, Colors.deepOrange, t) ?? Colors.deepOrange;
+    } else {
+      return Colors.red; // Red - Exceeded
+    }
+  }
+
+  /// Get status text and icon
+  Map<String, dynamic> _getStatusInfo(double percentage) {
+    if (percentage <= 0.5) {
+      return {'text': '✓ Safe', 'icon': Icons.check_circle};
+    } else if (percentage <= 0.7) {
+      return {'text': '⚠ Caution', 'icon': Icons.info};
+    } else if (percentage <= 0.85) {
+      return {'text': '⚠ Warning', 'icon': Icons.warning};
+    } else if (percentage <= 0.95) {
+      return {'text': '⚠ Critical', 'icon': Icons.warning_amber};
+    } else {
+      return {'text': '⛔ Exceeded', 'icon': Icons.cancel};
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final todaySpent = _getTodaySpent();
-    final isLimitExceeded = _isLimitExceeded();
     final remaining = _getRemainingBudget();
     final todayTransactions = _getTodayTransactions();
+    
+    // Calculate percentage for color coding
+    final percentage = _dailyLimit != null && _dailyLimit! > 0
+        ? (todaySpent / _dailyLimit!).clamp(0.0, 1.5)
+        : 0.0;
+    
+    final statusColor = _getStatusColor(percentage);
+    final statusInfo = _getStatusInfo(percentage);
 
     return Scaffold(
       backgroundColor: ThemeProvider.getBackgroundColor(),
@@ -147,13 +191,12 @@ class _DailyScreenState extends State<DailyScreen> {
                 color: ThemeProvider.getCardColor(),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isLimitExceeded ? Colors.red : Colors.green,
+                  color: statusColor,
                   width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (isLimitExceeded ? Colors.red : Colors.green)
-                        .withOpacity(0.2),
+                    color: statusColor.withOpacity(0.2),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -169,19 +212,27 @@ class _DailyScreenState extends State<DailyScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color:
-                          isLimitExceeded
-                              ? Colors.red.withOpacity(0.15)
-                              : Colors.green.withOpacity(0.15),
+                      color: statusColor.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      isLimitExceeded ? '⚠️ Limit Exceeded' : '✓ Within Budget',
-                      style: TextStyle(
-                        color: isLimitExceeded ? Colors.red : Colors.green,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          statusInfo['icon'] as IconData,
+                          color: statusColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          statusInfo['text'] as String,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -271,21 +322,34 @@ class _DailyScreenState extends State<DailyScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Progress Bar
+                  // Progress Bar with Dynamic Coloring
                   if (_dailyLimit != null) ...[
-                    Text(
-                      'Spending Progress',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Spending Progress',
+                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                        ),
+                        Text(
+                          '${(percentage * 100).toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
                         value: (todaySpent / _dailyLimit!).clamp(0, 1),
-                        minHeight: 12,
+                        minHeight: 16,
                         backgroundColor: Colors.grey.withOpacity(0.2),
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          isLimitExceeded ? Colors.red : Colors.green,
+                          statusColor,
                         ),
                       ),
                     ),
@@ -304,16 +368,14 @@ class _DailyScreenState extends State<DailyScreen> {
                       _buildDetailCard(
                         'Spent Today',
                         '\$${todaySpent.toStringAsFixed(2)}',
-                        Colors.red.withOpacity(0.1),
-                        Colors.red,
+                        statusColor.withOpacity(0.1),
+                        statusColor,
                       ),
                       _buildDetailCard(
-                        isLimitExceeded ? 'Overspent' : 'Remaining',
+                        remaining >= 0 ? 'Remaining' : 'Overspent',
                         '\$${remaining.abs().toStringAsFixed(2)}',
-                        isLimitExceeded
-                            ? Colors.red.withOpacity(0.1)
-                            : Colors.green.withOpacity(0.1),
-                        isLimitExceeded ? Colors.red : Colors.green,
+                        (remaining >= 0 ? Colors.green : Colors.red).withOpacity(0.1),
+                        remaining >= 0 ? Colors.green : Colors.red,
                       ),
                     ],
                   ),
@@ -399,15 +461,13 @@ class _DailyScreenState extends State<DailyScreen> {
                   final dayData = _getPastDaysTransactions()[index];
                   final date = dayData['date'] as DateTime;
                   final total = dayData['total'] as double;
-                  
+
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: ThemeProvider.getCardColor(),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.orange.withOpacity(0.2),
-                      ),
+                      border: Border.all(color: Colors.orange.withOpacity(0.2)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
