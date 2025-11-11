@@ -383,16 +383,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   );
                   return;
                 }
-                await TelegramService.saveCredentials(token, chat);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Telegram configured'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+
+                // Try a test send before saving
+                try {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Testing Telegram credentials...')),
+                  );
+                  await TelegramService.sendFeedback(
+                    'Test message from app',
+                    botToken: token,
+                    chatId: chat,
+                  );
+                  // If success, save
+                  await TelegramService.saveCredentials(token, chat);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Telegram configured and test message sent',
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Test failed: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
-              child: const Text('Save'),
+              child: const Text('Save & Test'),
             ),
           ],
         );
