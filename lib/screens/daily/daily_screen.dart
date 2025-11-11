@@ -115,23 +115,34 @@ class _DailyScreenState extends State<DailyScreen> {
     return '$dayName, ${dateToCheck.month}/${dateToCheck.day}';
   }
 
-  /// Get color based on spending percentage
-  /// 0-50%: Green, 50-70%: Yellow, 70-85%: Orange, 85-95%: Red-Orange, 95%+: Red
+  /// Get color based on spending percentage with 7 color grades
+  /// 0-40%: Green, 40-50%: Light Green, 50-60%: Yellow, 60-70%: Light Orange,
+  /// 70-80%: Orange, 80-90%: Red-Orange, 90-100%: Red
   Color _getStatusColor(double percentage) {
-    if (percentage <= 0.5) {
+    if (percentage <= 0.4) {
       return Colors.green; // Green - Safe
+    } else if (percentage <= 0.5) {
+      // Green to Light Green gradient
+      final t = (percentage - 0.4) / 0.1;
+      return Color.lerp(Colors.green, Color(0xFF66BB6A), t) ?? Color(0xFF66BB6A);
+    } else if (percentage <= 0.6) {
+      // Light Green to Yellow gradient
+      final t = (percentage - 0.5) / 0.1;
+      return Color.lerp(Color(0xFF66BB6A), Colors.amber, t) ?? Colors.amber;
     } else if (percentage <= 0.7) {
-      // Green to Yellow gradient
-      final t = (percentage - 0.5) / 0.2;
-      return Color.lerp(Colors.green, Colors.amber, t) ?? Colors.amber;
-    } else if (percentage <= 0.85) {
-      // Yellow to Orange gradient
-      final t = (percentage - 0.7) / 0.15;
-      return Color.lerp(Colors.amber, Colors.orange, t) ?? Colors.orange;
-    } else if (percentage <= 0.95) {
+      // Yellow to Light Orange gradient
+      final t = (percentage - 0.6) / 0.1;
+      return Color.lerp(Colors.amber, Color(0xFFFFB74D), t) ??
+          Color(0xFFFFB74D);
+    } else if (percentage <= 0.8) {
+      // Light Orange to Orange gradient
+      final t = (percentage - 0.7) / 0.1;
+      return Color.lerp(Color(0xFFFFB74D), Colors.orange, t) ?? Colors.orange;
+    } else if (percentage <= 0.9) {
       // Orange to Red-Orange gradient
-      final t = (percentage - 0.85) / 0.1;
-      return Color.lerp(Colors.orange, Colors.deepOrange, t) ?? Colors.deepOrange;
+      final t = (percentage - 0.8) / 0.1;
+      return Color.lerp(Colors.orange, Colors.deepOrange, t) ??
+          Colors.deepOrange;
     } else {
       return Colors.red; // Red - Exceeded
     }
@@ -139,13 +150,17 @@ class _DailyScreenState extends State<DailyScreen> {
 
   /// Get status text and icon
   Map<String, dynamic> _getStatusInfo(double percentage) {
-    if (percentage <= 0.5) {
+    if (percentage <= 0.4) {
       return {'text': '✓ Safe', 'icon': Icons.check_circle};
-    } else if (percentage <= 0.7) {
+    } else if (percentage <= 0.5) {
+      return {'text': '✓ Good', 'icon': Icons.check_circle};
+    } else if (percentage <= 0.6) {
       return {'text': '⚠ Caution', 'icon': Icons.info};
-    } else if (percentage <= 0.85) {
+    } else if (percentage <= 0.7) {
+      return {'text': '⚠ Alert', 'icon': Icons.info};
+    } else if (percentage <= 0.8) {
       return {'text': '⚠ Warning', 'icon': Icons.warning};
-    } else if (percentage <= 0.95) {
+    } else if (percentage <= 0.9) {
       return {'text': '⚠ Critical', 'icon': Icons.warning_amber};
     } else {
       return {'text': '⛔ Exceeded', 'icon': Icons.cancel};
@@ -157,12 +172,13 @@ class _DailyScreenState extends State<DailyScreen> {
     final todaySpent = _getTodaySpent();
     final remaining = _getRemainingBudget();
     final todayTransactions = _getTodayTransactions();
-    
+
     // Calculate percentage for color coding
-    final percentage = _dailyLimit != null && _dailyLimit! > 0
-        ? (todaySpent / _dailyLimit!).clamp(0.0, 1.5)
-        : 0.0;
-    
+    final percentage =
+        _dailyLimit != null && _dailyLimit! > 0
+            ? (todaySpent / _dailyLimit!).clamp(0.0, 1.5)
+            : 0.0;
+
     final statusColor = _getStatusColor(percentage);
     final statusInfo = _getStatusInfo(percentage);
 
@@ -190,10 +206,7 @@ class _DailyScreenState extends State<DailyScreen> {
               decoration: BoxDecoration(
                 color: ThemeProvider.getCardColor(),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: statusColor,
-                  width: 2,
-                ),
+                border: Border.all(color: statusColor, width: 2),
                 boxShadow: [
                   BoxShadow(
                     color: statusColor.withOpacity(0.2),
@@ -329,7 +342,10 @@ class _DailyScreenState extends State<DailyScreen> {
                       children: [
                         Text(
                           'Spending Progress',
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 12,
+                          ),
                         ),
                         Text(
                           '${(percentage * 100).toStringAsFixed(0)}%',
@@ -348,9 +364,7 @@ class _DailyScreenState extends State<DailyScreen> {
                         value: (todaySpent / _dailyLimit!).clamp(0, 1),
                         minHeight: 16,
                         backgroundColor: Colors.grey.withOpacity(0.2),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          statusColor,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -374,7 +388,8 @@ class _DailyScreenState extends State<DailyScreen> {
                       _buildDetailCard(
                         remaining >= 0 ? 'Remaining' : 'Overspent',
                         '\$${remaining.abs().toStringAsFixed(2)}',
-                        (remaining >= 0 ? Colors.green : Colors.red).withOpacity(0.1),
+                        (remaining >= 0 ? Colors.green : Colors.red)
+                            .withOpacity(0.1),
                         remaining >= 0 ? Colors.green : Colors.red,
                       ),
                     ],
