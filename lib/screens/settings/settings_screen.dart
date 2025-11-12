@@ -1,8 +1,8 @@
-import 'package:app/screens/settings/dialogs/about_dialog.dart';
 import 'package:app/screens/settings/widgets/category_section.dart';
 import 'package:app/screens/settings/widgets/info_section.dart';
 import 'package:app/screens/settings/widgets/theme_section.dart';
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/models.dart';
 import '../../models/themes.dart';
 import '../../functions/category_managment.dart';
@@ -13,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
   final Function(String) onThemeChanged;
   final Function(Category) onAddCategory;
   final Function(String, bool) onRemoveCategory;
+  final void Function(Locale)? onLocaleChanged;
 
   const SettingsScreen({
     super.key,
@@ -20,6 +21,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onThemeChanged,
     required this.onAddCategory,
     required this.onRemoveCategory,
+    this.onLocaleChanged,
   });
 
   @override
@@ -41,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: ThemeProvider.getBackgroundColor(),
         elevation: 0,
         title: Text(
-          'Settings',
+          AppLocalizations.of(context).t('settings'),
           style: TextStyle(
             color: ThemeProvider.getTextColor(),
             fontWeight: FontWeight.w600,
@@ -60,88 +62,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const SizedBox(height: 24),
-          // Daily Limit Setting
-          // ListTile(
-          //   contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 6),
-          //   title: Text(
-          //     'Daily Spending Limit',
-          //     style: TextStyle(
-          //       color: ThemeProvider.getTextColor(),
-          //       fontWeight: FontWeight.w600,
-          //     ),
-          //   ),
-          //   subtitle: Text(
-          //     _dailyLimit != null
-          //         ? '\$${_dailyLimit!.toStringAsFixed(2)}'
-          //         : 'Not set',
-          //     style: TextStyle(color: Colors.grey[500]),
-          //   ),
-          //   trailing: Row(
-          //     mainAxisSize: MainAxisSize.min,
-          //     children: [
-          //       TextButton(
-          //         onPressed: () async {
-          //           final result = await showDialog<double?>(
-          //             context: context,
-          //             builder: (context) {
-          //               final controller = TextEditingController(
-          //                 text: _dailyLimit?.toStringAsFixed(2) ?? '',
-          //               );
-          //               return AlertDialog(
-          //                 backgroundColor: ThemeProvider.getCardColor(),
-          //                 title: Text(
-          //                   'Set Daily Limit',
-          //                   style: TextStyle(
-          //                     color: ThemeProvider.getTextColor(),
-          //                   ),
-          //                 ),
-          //                 content: TextField(
-          //                   controller: controller,
-          //                   keyboardType: TextInputType.numberWithOptions(
-          //                     decimal: true,
-          //                   ),
-          //                   decoration: InputDecoration(
-          //                     hintText: 'Enter daily spending limit',
-          //                   ),
-          //                 ),
-          //                 actions: [
-          //                   TextButton(
-          //                     onPressed: () => Navigator.pop(context, null),
-          //                     child: Text('Cancel'),
-          //                   ),
-          //                   TextButton(
-          //                     onPressed: () {
-          //                       final text = controller.text.trim();
-          //                       if (text.isEmpty) return Navigator.pop(context, null);
-          //                       final val = double.tryParse(text);
-          //                       Navigator.pop(context, val);
-          //                     },
-          //                     child: Text('Save'),
-          //                   ),
-          //                 ],
-          //               );
-          //             },
-          //           );
-          //           if (result != null) {
-          //             await saveDailyLimit(result);
-          //             setState(() => _dailyLimit = result);
-          //           }
-          //         },
-          //         child: Text('Set'),
-          //       ),
-          //       if (_dailyLimit != null) SizedBox(width: 8),
-          //       if (_dailyLimit != null)
-          //         TextButton(
-          //           onPressed: () async {
-          //             await saveDailyLimit(null);
-          //             setState(() => _dailyLimit = null);
-          //           },
-          //           child: Text('Clear', style: TextStyle(color: Colors.red)),
-          //         ),
-          //     ],
-          //   ),
-          // ),
-          // const SizedBox(height: 24),
           CategorySection(
             onAddCategory: (cat) {
               widget.onAddCategory(cat);
@@ -153,60 +73,176 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const SizedBox(height: 24),
-          InfoSection(onRateApp: _rateApp, onHelpPressed: _showAboutDialog),
+          // Language selection
+          ListTile(
+            tileColor: ThemeProvider.getCardColor(),
+            title: Text(
+              AppLocalizations.of(context).t('language'),
+              style: TextStyle(color: ThemeProvider.getTextColor()),
+            ),
+            subtitle: Text(
+              _getCurrentLanguageName(context),
+              style: TextStyle(color: Colors.grey[400]),
+            ),
+            trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
+            onTap: _showLanguageDialog,
+          ),
           const SizedBox(height: 24),
-          // Feedback
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              Icons.feedback,
-              color: ThemeProvider.getPrimaryColor(),
-            ),
-            title: Text(
-              'Send Feedback',
-              style: TextStyle(
-                color: ThemeProvider.getTextColor(),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            subtitle: Text(
-              'Report bugs or suggestions',
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-            onTap: _showFeedbackDialog,
-          ),
-          const SizedBox(height: 12),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.telegram, color: Colors.blue),
-            title: Text(
-              'Configure Telegram',
-              style: TextStyle(
-                color: ThemeProvider.getTextColor(),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            subtitle: Text(
-              'Set bot token and chat id to receive feedback',
-              style: TextStyle(color: Colors.grey[500]),
-            ),
-            onTap: _configureTelegramDialog,
-          ),
+          InfoSection(onRateApp: _rateApp, onHelpPressed: _showFeedbackDialog),
         ],
       ),
     );
   }
 
-  void _showAboutDialog() {
-    showAboutAppDialog(context);
+  String _getCurrentLanguageName(BuildContext context) {
+    final code = Localizations.localeOf(context).languageCode;
+    switch (code) {
+      case 'ru':
+        return AppLocalizations.of(context).t('russian');
+      case 'en':
+        return AppLocalizations.of(context).t('english');
+      case 'uz':
+      default:
+        return AppLocalizations.of(context).t('uzbek');
+    }
   }
 
+  void _showLanguageDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: ThemeProvider.getCardColor(),
+          title: Text(
+            AppLocalizations.of(context).t('select_language'),
+            style: TextStyle(color: ThemeProvider.getTextColor()),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(AppLocalizations.of(context).t('uzbek')),
+                onTap: () {
+                  widget.onLocaleChanged?.call(Locale('uz'));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: Text(AppLocalizations.of(context).t('russian')),
+                onTap: () {
+                  widget.onLocaleChanged?.call(Locale('ru'));
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                title: Text(AppLocalizations.of(context).t('english')),
+                onTap: () {
+                  widget.onLocaleChanged?.call(Locale('en'));
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // About dialog helper removed (not used here). Use showAboutAppDialog when needed.
+
   void _rateApp() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Rating functionality coming soon!'),
-        backgroundColor: Colors.blue,
-      ),
+    // Show star-rating dialog and send rating to Telegram
+    final commentController = TextEditingController();
+    int rating = 5;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: ThemeProvider.getCardColor(),
+              title: Text(
+                AppLocalizations.of(context).t('rate_app'),
+                style: TextStyle(color: ThemeProvider.getTextColor()),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    AppLocalizations.of(context).t('how_rate'),
+                    style: TextStyle(color: ThemeProvider.getTextColor()),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      final starIndex = index + 1;
+                      return IconButton(
+                        icon: Icon(
+                          starIndex <= rating ? Icons.star : Icons.star_border,
+                          color:
+                              starIndex <= rating ? Colors.amber : Colors.grey,
+                        ),
+                        onPressed: () => setState(() => rating = starIndex),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: commentController,
+                    maxLines: 3,
+                    decoration: InputDecoration(hintText: 'Optional comment'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final comment = commentController.text.trim();
+                    final msg =
+                        'App Rating: $rating/5\n${comment.isNotEmpty ? 'Comment: $comment\n' : ''}';
+                    try {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            AppLocalizations.of(context).t('sending_feedback'),
+                          ),
+                        ),
+                      );
+                      await TelegramService.sendFeedback(msg);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            AppLocalizations.of(context).t('thank_you_rating'),
+                          ),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            '${AppLocalizations.of(context).t('failed_send_rating')} ${e.toString()}',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Send'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -221,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return AlertDialog(
           backgroundColor: ThemeProvider.getCardColor(),
           title: Text(
-            'Send Feedback',
+            AppLocalizations.of(context).t('send_feedback'),
             style: TextStyle(color: ThemeProvider.getTextColor()),
           ),
           content: Column(
@@ -255,7 +291,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (msg.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Please enter your feedback'),
+                      content: Text(
+                        AppLocalizations.of(context).t('enter_feedback'),
+                      ),
                       backgroundColor: Colors.orange,
                     ),
                   );
@@ -268,13 +306,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Try sending via TelegramService
                 try {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Sending feedback...')),
+                    SnackBar(
+                      content: Text(
+                        AppLocalizations.of(context).t('sending_feedback'),
+                      ),
+                    ),
                   );
                   await TelegramService.sendFeedback(fullMessage);
                   Navigator.pop(context); // close dialog
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Feedback sent — thank you!'),
+                      content: Text(
+                        AppLocalizations.of(context).t('feedback_sent'),
+                      ),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -302,13 +346,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               onPressed: () => Navigator.pop(ctx),
                               child: const Text('Cancel'),
                             ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                _configureTelegramDialog();
-                              },
-                              child: const Text('Configure'),
-                            ),
                           ],
                         );
                       },
@@ -327,94 +364,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 }
               },
               child: const Text('Send'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Dialog to configure Telegram bot token and chat id
-  void _configureTelegramDialog() async {
-    final creds = await TelegramService.getCredentials();
-    final tokenController = TextEditingController(text: creds['token'] ?? '');
-    final chatController = TextEditingController(text: creds['chatId'] ?? '');
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: ThemeProvider.getCardColor(),
-          title: Text(
-            'Configure Telegram',
-            style: TextStyle(color: ThemeProvider.getTextColor()),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: tokenController,
-                decoration: InputDecoration(
-                  hintText: 'Bot token (from @BotFather)',
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: chatController,
-                decoration: InputDecoration(hintText: 'Chat id (or @channel)'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final token = tokenController.text.trim();
-                final chat = chatController.text.trim();
-                if (token.isEmpty || chat.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Both token and chat id are required'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  return;
-                }
-
-                // Try a test send before saving
-                try {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Testing Telegram credentials...')),
-                  );
-                  await TelegramService.sendFeedback(
-                    'Test message from app',
-                    botToken: token,
-                    chatId: chat,
-                  );
-                  // If success, save
-                  await TelegramService.saveCredentials(token, chat);
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Telegram configured and test message sent',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Test failed: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Save & Test'),
             ),
           ],
         );

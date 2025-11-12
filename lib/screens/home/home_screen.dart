@@ -15,9 +15,11 @@ import '../../functions/category_managment.dart';
 import '../../models/models.dart';
 import '../../models/themes.dart';
 import '../settings/settings_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final void Function(Locale)? onLocaleChanged;
+  const HomeScreen({super.key, this.onLocaleChanged});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -126,6 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onThemeChanged: _updateTheme,
             onAddCategory: _addCategory,
             onRemoveCategory: _removeCategory,
+            onLocaleChanged: widget.onLocaleChanged,
           ),
         ],
       ),
@@ -188,58 +191,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            SizedBox(width: 12),
-            // OutlinedButton(
-            //   onPressed: () async {
-            //     final result = await showDialog<double?>(
-            //       context: context,
-            //       builder: (context) {
-            //         final controller = TextEditingController(
-            //           text: _dailyLimit?.toStringAsFixed(2) ?? '',
-            //         );
-            //         return AlertDialog(
-            //           backgroundColor: ThemeProvider.getCardColor(),
-            //           title: Text(
-            //             'Set Daily Limit',
-            //             style: TextStyle(color: ThemeProvider.getTextColor()),
-            //           ),
-            //           content: TextField(
-            //             controller: controller,
-            //             keyboardType: TextInputType.numberWithOptions(
-            //               decimal: true,
-            //             ),
-            //             decoration: InputDecoration(
-            //               hintText: 'Enter limit amount',
-            //             ),
-            //           ),
-            //           actions: [
-            //             TextButton(
-            //               onPressed: () => Navigator.pop(context, null),
-            //               child: Text('Cancel'),
-            //             ),
-            //             TextButton(
-            //               onPressed: () {
-            //                 final text = controller.text.trim();
-            //                 if (text.isEmpty) {
-            //                   return Navigator.pop(context, null);
-            //                 }
-            //                 final val = double.tryParse(text);
-            //                 Navigator.pop(context, val);
-            //               },
-            //               child: Text('Save'),
-            //             ),
-            //           ],
-            //         );
-            //       },
-            //     );
-
-            //     if (result != null) {
-            //       await saveDailyLimit(result);
-            //       setState(() => _dailyLimit = result);
-            //     }
-            //   },
-            //   child: Text('Limit'),
-            // ),
           ],
         ),
       );
@@ -327,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Welcome Header
           Text(
-            'Welcome Back!',
+            AppLocalizations.of(context).t('welcome_back'),
             style: TextStyle(
               color: ThemeProvider.getTextColor(),
               fontSize: 28,
@@ -336,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SizedBox(height: 8),
           Text(
-            'Here\'s your financial overview',
+            AppLocalizations.of(context).t('overview'),
             style: TextStyle(color: Colors.grey[400], fontSize: 16),
           ),
           SizedBox(height: 30),
@@ -465,7 +416,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          SizedBox(height: 30),
 
           // Pending Confirmations Section
           PendingTransactionsWidget(
@@ -508,7 +458,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Recent Transactions',
+                AppLocalizations.of(context).t('today_transactions'),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 20,
@@ -521,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _currentIndex = 1; // Navigate to Statistics
                   });
                 },
-                child: Text('View All'),
+                child: Text(AppLocalizations.of(context).t('previous_days')),
               ),
             ],
           ),
@@ -567,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (direction) async {
-        return await showDialog(
+        return await showDialog<bool>(
           context: context,
           builder:
               (context) => AlertDialog(
