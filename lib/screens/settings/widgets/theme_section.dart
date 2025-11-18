@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/themes.dart';
+import 'package:app/l10n/app_localizations.dart';
 import 'theme_option_tile.dart';
 
 class ThemeSection extends StatelessWidget {
@@ -24,23 +25,23 @@ class ThemeSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
+            children: [
               Icon(Icons.palette, size: 24),
               SizedBox(width: 12),
               Text(
-                'Theme Selection',
+                AppLocalizations.of(context).t('theme_selection'),
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose your preferred app theme',
+            AppLocalizations.of(context).t('choose_theme'),
             style: TextStyle(color: Colors.grey[400], fontSize: 14),
           ),
           const SizedBox(height: 20),
           ThemeOptionTile(
-            title: 'Light Theme',
+            title: AppLocalizations.of(context).t('light_theme'),
             value: 'light',
             icon: Icons.light_mode,
             iconColor: Colors.orange,
@@ -49,7 +50,7 @@ class ThemeSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ThemeOptionTile(
-            title: 'Dark Theme',
+            title: AppLocalizations.of(context).t('dark_theme'),
             value: 'dark',
             icon: Icons.dark_mode,
             iconColor: Colors.grey,
@@ -58,7 +59,7 @@ class ThemeSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           ThemeOptionTile(
-            title: 'Blue Theme',
+            title: AppLocalizations.of(context).t('blue_theme'),
             value: 'blue',
             icon: Icons.water_drop,
             iconColor: Colors.blue,

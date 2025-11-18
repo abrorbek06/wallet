@@ -3,6 +3,9 @@ import '../../models/models.dart';
 import '../../models/themes.dart';
 import '../../models/storage.dart';
 import '../../functions/category_managment.dart';
+import 'package:app/services/currency_service.dart';
+import 'package:app/services/exchange_rate_service.dart';
+import '../../l10n/app_localizations.dart';
 
 class DailyScreen extends StatefulWidget {
   final List<Transaction> transactions;
@@ -15,6 +18,7 @@ class DailyScreen extends StatefulWidget {
 
 class _DailyScreenState extends State<DailyScreen> {
   double? _dailyLimit;
+  String _dailyLimitCurrency = 'USD';
 
   @override
   void initState() {
@@ -24,7 +28,11 @@ class _DailyScreenState extends State<DailyScreen> {
 
   Future<void> _loadDailyLimit() async {
     final limit = await loadDailyLimit();
-    setState(() => _dailyLimit = limit);
+    final currency = await loadDailyLimitCurrency();
+    setState(() {
+      _dailyLimit = limit;
+      _dailyLimitCurrency = currency;
+    });
   }
 
   /// Get today's transactions (expenses only, excluding unconfirmed scheduled)
@@ -67,7 +75,7 @@ class _DailyScreenState extends State<DailyScreen> {
         grouped.entries.map((entry) {
           final total = entry.value.fold<double>(
             0.0,
-            (sum, t) => sum + t.amount,
+            (sum, t) => sum + _convertTransactionAmount(t),
           );
           return {
             'date': entry.key,
@@ -84,33 +92,66 @@ class _DailyScreenState extends State<DailyScreen> {
     return result;
   }
 
+  /// Convert transaction amount from its input currency to display currency
+  double _convertTransactionAmount(Transaction t) {
+    final displayCurrencyStr =
+        CurrencyService.instance.currency == Currency.USD ? 'USD' : 'UZS';
+    return ExchangeRateService.convert(
+      t.amount,
+      t.inputCurrency,
+      displayCurrencyStr,
+    );
+  }
+
   /// Calculate total spent today
   double _getTodaySpent() {
     return _getTodayTransactions().fold<double>(
       0.0,
-      (sum, t) => sum + t.amount,
+      (sum, t) => sum + _convertTransactionAmount(t),
     );
   }
 
   /// Get remaining budget (or overspent amount)
   double _getRemainingBudget() {
     if (_dailyLimit == null) return 0;
-    return _dailyLimit! - _getTodaySpent();
+    final dailyLimitInDisplay = _convertDailyLimitToDisplayCurrency();
+    return dailyLimitInDisplay - _getTodaySpent();
+  }
+
+  /// Convert daily limit from its input currency to display currency
+  double _convertDailyLimitToDisplayCurrency() {
+    if (_dailyLimit == null) return 0;
+    final displayCurrencyStr =
+        CurrencyService.instance.currency == Currency.USD ? 'USD' : 'UZS';
+    return ExchangeRateService.convert(
+      _dailyLimit!,
+      _dailyLimitCurrency,
+      displayCurrencyStr,
+    );
   }
 
   /// Format date for display
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime date, BuildContext context) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(Duration(days: 1));
     final dateToCheck = DateTime(date.year, date.month, date.day);
 
     if (dateToCheck == yesterday) {
-      return 'Yesterday';
+      return AppLocalizations.of(context).t('yesterday');
     }
 
-    // Show day of week and date
-    final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // Show day of week and date (localized short names)
+    final loc = AppLocalizations.of(context);
+    final dayNames = [
+      loc.t('mon'),
+      loc.t('tue'),
+      loc.t('wed'),
+      loc.t('thu'),
+      loc.t('fri'),
+      loc.t('sat'),
+      loc.t('sun'),
+    ];
     final dayName = dayNames[dateToCheck.weekday - 1];
     return '$dayName, ${dateToCheck.month}/${dateToCheck.day}';
   }
@@ -124,7 +165,8 @@ class _DailyScreenState extends State<DailyScreen> {
     } else if (percentage <= 0.5) {
       // Green to Light Green gradient
       final t = (percentage - 0.4) / 0.1;
-      return Color.lerp(Colors.green, Color(0xFF66BB6A), t) ?? Color(0xFF66BB6A);
+      return Color.lerp(Colors.green, Color(0xFF66BB6A), t) ??
+          Color(0xFF66BB6A);
     } else if (percentage <= 0.6) {
       // Light Green to Yellow gradient
       final t = (percentage - 0.5) / 0.1;
@@ -151,19 +193,40 @@ class _DailyScreenState extends State<DailyScreen> {
   /// Get status text and icon
   Map<String, dynamic> _getStatusInfo(double percentage) {
     if (percentage <= 0.4) {
-      return {'text': '✓ Safe', 'icon': Icons.check_circle};
+      return {
+        'text': AppLocalizations.of(context).t('status_safe'),
+        'icon': Icons.check_circle,
+      };
     } else if (percentage <= 0.5) {
-      return {'text': '✓ Good', 'icon': Icons.check_circle};
+      return {
+        'text': AppLocalizations.of(context).t('status_good'),
+        'icon': Icons.check_circle,
+      };
     } else if (percentage <= 0.6) {
-      return {'text': '⚠ Caution', 'icon': Icons.info};
+      return {
+        'text': AppLocalizations.of(context).t('status_caution'),
+        'icon': Icons.info,
+      };
     } else if (percentage <= 0.7) {
-      return {'text': '⚠ Alert', 'icon': Icons.info};
+      return {
+        'text': AppLocalizations.of(context).t('status_alert'),
+        'icon': Icons.info,
+      };
     } else if (percentage <= 0.8) {
-      return {'text': '⚠ Warning', 'icon': Icons.warning};
+      return {
+        'text': AppLocalizations.of(context).t('status_warning'),
+        'icon': Icons.warning,
+      };
     } else if (percentage <= 0.9) {
-      return {'text': '⚠ Critical', 'icon': Icons.warning_amber};
+      return {
+        'text': AppLocalizations.of(context).t('status_critical'),
+        'icon': Icons.warning_amber,
+      };
     } else {
-      return {'text': '⛔ Exceeded', 'icon': Icons.cancel};
+      return {
+        'text': AppLocalizations.of(context).t('status_exceeded'),
+        'icon': Icons.cancel,
+      };
     }
   }
 
@@ -172,11 +235,12 @@ class _DailyScreenState extends State<DailyScreen> {
     final todaySpent = _getTodaySpent();
     final remaining = _getRemainingBudget();
     final todayTransactions = _getTodayTransactions();
+    final dailyLimitInDisplay = _convertDailyLimitToDisplayCurrency();
 
     // Calculate percentage for color coding
     final percentage =
-        _dailyLimit != null && _dailyLimit! > 0
-            ? (todaySpent / _dailyLimit!).clamp(0.0, 1.5)
+        dailyLimitInDisplay > 0
+            ? (todaySpent / dailyLimitInDisplay).clamp(0.0, 1.5)
             : 0.0;
 
     final statusColor = _getStatusColor(percentage);
@@ -188,7 +252,7 @@ class _DailyScreenState extends State<DailyScreen> {
         backgroundColor: ThemeProvider.getBackgroundColor(),
         elevation: 0,
         title: Text(
-          'Today\'s Spending',
+          AppLocalizations.of(context).t('todays_spending'),
           style: TextStyle(
             color: ThemeProvider.getTextColor(),
             fontWeight: FontWeight.w600,
@@ -258,7 +322,7 @@ class _DailyScreenState extends State<DailyScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Daily Limit',
+                            AppLocalizations.of(context).t('daily_limit'),
                             style: TextStyle(
                               color: Colors.grey[500],
                               fontSize: 14,
@@ -267,11 +331,21 @@ class _DailyScreenState extends State<DailyScreen> {
                           const SizedBox(height: 8),
                           Text(
                             _dailyLimit != null
-                                ? '\$${_dailyLimit!.toStringAsFixed(2)}'
-                                : 'Not set',
+                                ? CurrencyService.instance.formatAmount(
+                                  _convertDailyLimitToDisplayCurrency(),
+                                )
+                                : AppLocalizations.of(context).t('not_set'),
                             style: TextStyle(
                               color: ThemeProvider.getTextColor(),
-                              fontSize: 28,
+                              fontSize:
+                                  CurrencyService.instance
+                                              .formatAmount(
+                                                _convertDailyLimitToDisplayCurrency(),
+                                              )
+                                              .length >=
+                                          10
+                                      ? 22
+                                      : 28,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -279,57 +353,109 @@ class _DailyScreenState extends State<DailyScreen> {
                       ),
                       TextButton.icon(
                         onPressed: () async {
+                          String selectedCurrency = _dailyLimitCurrency;
                           final result = await showDialog<double?>(
                             context: context,
                             builder: (context) {
                               final controller = TextEditingController(
                                 text: _dailyLimit?.toStringAsFixed(2) ?? '',
                               );
-                              return AlertDialog(
-                                backgroundColor: ThemeProvider.getCardColor(),
-                                title: Text(
-                                  'Set Daily Limit',
-                                  style: TextStyle(
-                                    color: ThemeProvider.getTextColor(),
-                                  ),
-                                ),
-                                content: TextField(
-                                  controller: controller,
-                                  keyboardType: TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    hintText: 'Enter daily spending limit',
-                                  ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed:
-                                        () => Navigator.pop(context, null),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      final text = controller.text.trim();
-                                      if (text.isEmpty) {
-                                        return Navigator.pop(context, null);
-                                      }
-                                      final val = double.tryParse(text);
-                                      Navigator.pop(context, val);
-                                    },
-                                    child: const Text('Save'),
-                                  ),
-                                ],
+                              return StatefulBuilder(
+                                builder: (context, setDialogState) {
+                                  return AlertDialog(
+                                    backgroundColor:
+                                        ThemeProvider.getCardColor(),
+                                    title: Text(
+                                      AppLocalizations.of(
+                                        context,
+                                      ).t('set_daily_limit'),
+                                      style: TextStyle(
+                                        color: ThemeProvider.getTextColor(),
+                                      ),
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        TextField(
+                                          controller: controller,
+                                          keyboardType:
+                                              TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          decoration: const InputDecoration(
+                                            hintText:
+                                                'Enter daily spending limit',
+                                          ),
+                                        ),
+                                        SizedBox(height: 16),
+                                        // Currency Selector
+                                        SegmentedButton<String>(
+                                          segments: const [
+                                            ButtonSegment(
+                                              label: Text('USD'),
+                                              value: 'USD',
+                                            ),
+                                            ButtonSegment(
+                                              label: Text("so'm"),
+                                              value: 'UZS',
+                                            ),
+                                          ],
+                                          selected: {selectedCurrency},
+                                          onSelectionChanged: (
+                                            Set<String> newSelection,
+                                          ) {
+                                            setDialogState(() {
+                                              selectedCurrency =
+                                                  newSelection.first;
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(context, null),
+                                        child: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          ).t('cancel'),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          final text = controller.text.trim();
+                                          if (text.isEmpty) {
+                                            return Navigator.pop(context, null);
+                                          }
+                                          final val = double.tryParse(text);
+                                          Navigator.pop(context, val);
+                                        },
+                                        child: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          ).t('save'),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
                               );
                             },
                           );
                           if (result != null) {
-                            await saveDailyLimit(result);
-                            setState(() => _dailyLimit = result);
+                            await saveDailyLimit(
+                              result,
+                              currency: selectedCurrency,
+                            );
+                            setState(() {
+                              _dailyLimit = result;
+                              _dailyLimitCurrency = selectedCurrency;
+                            });
                           }
                         },
                         icon: const Icon(Icons.edit),
-                        label: const Text('Edit'),
+                        label: Text(AppLocalizations.of(context).t('edit')),
                       ),
                     ],
                   ),
@@ -341,7 +467,7 @@ class _DailyScreenState extends State<DailyScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Spending Progress',
+                          AppLocalizations.of(context).t('spending_progress'),
                           style: TextStyle(
                             color: Colors.grey[500],
                             fontSize: 12,
@@ -361,7 +487,10 @@ class _DailyScreenState extends State<DailyScreen> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: LinearProgressIndicator(
-                        value: (todaySpent / _dailyLimit!).clamp(0, 1),
+                        value:
+                            (dailyLimitInDisplay > 0)
+                                ? (todaySpent / dailyLimitInDisplay).clamp(0, 1)
+                                : 0,
                         minHeight: 16,
                         backgroundColor: Colors.grey.withOpacity(0.2),
                         valueColor: AlwaysStoppedAnimation<Color>(statusColor),
@@ -380,14 +509,16 @@ class _DailyScreenState extends State<DailyScreen> {
                     childAspectRatio: 1.2,
                     children: [
                       _buildDetailCard(
-                        'Spent Today',
-                        '\$${todaySpent.toStringAsFixed(2)}',
+                        AppLocalizations.of(context).t('spent_today'),
+                        CurrencyService.instance.formatAmount(todaySpent),
                         statusColor.withOpacity(0.1),
                         statusColor,
                       ),
                       _buildDetailCard(
-                        remaining >= 0 ? 'Remaining' : 'Overspent',
-                        '\$${remaining.abs().toStringAsFixed(2)}',
+                        remaining >= 0
+                            ? AppLocalizations.of(context).t('remaining')
+                            : AppLocalizations.of(context).t('overspent'),
+                        CurrencyService.instance.formatAmount(remaining.abs()),
                         (remaining >= 0 ? Colors.green : Colors.red)
                             .withOpacity(0.1),
                         remaining >= 0 ? Colors.green : Colors.red,
@@ -401,7 +532,7 @@ class _DailyScreenState extends State<DailyScreen> {
 
             // Today's Transactions
             Text(
-              'Today\'s Transactions',
+              AppLocalizations.of(context).t('today_transactions'),
               style: TextStyle(
                 color: ThemeProvider.getTextColor(),
                 fontSize: 20,
@@ -459,7 +590,7 @@ class _DailyScreenState extends State<DailyScreen> {
             // Past Days Summary
             if (_getPastDaysTransactions().isNotEmpty) ...[
               Text(
-                'Previous Days',
+                AppLocalizations.of(context).t('previous_days'),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 20,
@@ -491,7 +622,7 @@ class _DailyScreenState extends State<DailyScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _formatDate(date),
+                              _formatDate(date, context),
                               style: TextStyle(
                                 color: ThemeProvider.getTextColor(),
                                 fontSize: 14,
@@ -500,7 +631,7 @@ class _DailyScreenState extends State<DailyScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${(dayData['transactions'] as List).length} transactions',
+                              '${(dayData['transactions'] as List).length} ${AppLocalizations.of(context).t('transactions')}',
                               style: TextStyle(
                                 color: Colors.grey[500],
                                 fontSize: 12,
@@ -509,7 +640,7 @@ class _DailyScreenState extends State<DailyScreen> {
                           ],
                         ),
                         Text(
-                          '-\$${total.toStringAsFixed(2)}',
+                          '-${CurrencyService.instance.formatAmount(total)}',
                           style: TextStyle(
                             color: Colors.orange,
                             fontSize: 16,
@@ -623,7 +754,7 @@ class _DailyScreenState extends State<DailyScreen> {
 
           // Amount
           Text(
-            '-\$${transaction.amount.toStringAsFixed(2)}',
+            '-${CurrencyService.instance.formatAmount(transaction.amount, inputCurrency: transaction.inputCurrency)}',
             style: const TextStyle(
               color: Colors.red,
               fontSize: 14,

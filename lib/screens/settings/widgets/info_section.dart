@@ -34,9 +34,18 @@ class InfoSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _buildInfoRow('Versiyasi', '1.0.0'),
-          _buildInfoRow('Developer', 'Isayev Abrorbek'),
-          _buildInfoRow('Last Updated', 'June 2025'),
+          _buildInfoRow(
+            AppLocalizations.of(context).t('version'),
+            AppLocalizations.of(context).t('app_version_value'),
+          ),
+          _buildInfoRow(
+            AppLocalizations.of(context).t('developer'),
+            AppLocalizations.of(context).t('developer_name_value'),
+          ),
+          _buildInfoRow(
+            AppLocalizations.of(context).t('last_updated'),
+            AppLocalizations.of(context).t('last_updated_value'),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [

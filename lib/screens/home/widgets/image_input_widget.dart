@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:app/models/themes.dart';
+import 'package:app/services/currency_service.dart';
 import 'package:app/screens/home/services/voice_input_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../l10n/app_localizations.dart';
 import '../services/image_ocr_service.dart';
 
 class ImageInputWidget extends StatefulWidget {
@@ -25,7 +27,7 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
   final ImagePicker _picker = ImagePicker();
   File? _selectedImage;
   bool _isProcessing = false;
-  String _status = 'Select an image to extract transactions';
+  String _status = '';
   List<TransactionData> _extractedTransactions = [];
 
   @override
@@ -53,7 +55,7 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                   ),
                 Expanded(
                   child: Text(
-                    'Image Transaction',
+                    AppLocalizations.of(context).t('image_transaction_title'),
                     style: TextStyle(
                       color: ThemeProvider.getTextColor(),
                       fontSize: 20,
@@ -63,15 +65,12 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                 ),
                 IconButton(
                   onPressed: widget.onClose,
-                  icon: Icon(
-                    Icons.close,
-                    color: Colors.grey[400],
-                  ),
+                  icon: Icon(Icons.close, color: Colors.grey[400]),
                 ),
               ],
             ),
             SizedBox(height: 20),
-        
+
             // Image Preview or Placeholder
             Container(
               width: double.infinity,
@@ -84,46 +83,48 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                   style: BorderStyle.solid,
                 ),
               ),
-              child: _selectedImage != null
-                  ? ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(
-                        _selectedImage!,
-                        fit: BoxFit.fill,
-                      ),
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.image_outlined,
-                          size: 48,
-                          color: Colors.grey[400],
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'Upload receipt or transaction image',
-                          style: TextStyle(
+              child:
+                  _selectedImage != null
+                      ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(_selectedImage!, fit: BoxFit.fill),
+                      )
+                      : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.image_outlined,
+                            size: 48,
                             color: Colors.grey[400],
-                            fontSize: 16,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Supports receipts, bank statements, invoices',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 12,
+                          SizedBox(height: 12),
+                          Text(
+                            AppLocalizations.of(
+                              context,
+                            ).t('upload_receipt_placeholder'),
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                          SizedBox(height: 8),
+                          Text(
+                            AppLocalizations.of(
+                              context,
+                            ).t('supports_receipts_hint'),
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
             ),
             SizedBox(height: 20),
-        
+
             // Action Buttons
             if (!_isProcessing) ...[
               Row(
@@ -132,7 +133,10 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                     child: ElevatedButton.icon(
                       onPressed: () => _pickImage(ImageSource.camera),
                       icon: Icon(Icons.camera_alt, color: Colors.white),
-                      label: Text('Camera', style: TextStyle(color: Colors.white)),
+                      label: Text(
+                        AppLocalizations.of(context).t('camera'),
+                        style: TextStyle(color: Colors.white),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ThemeProvider.getPrimaryColor(),
                         padding: EdgeInsets.symmetric(vertical: 12),
@@ -147,7 +151,10 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                     child: ElevatedButton.icon(
                       onPressed: () => _pickImage(ImageSource.gallery),
                       icon: Icon(Icons.photo_library, color: Colors.white),
-                      label: Text('Gallery', style: TextStyle(color: Colors.white)),
+                      label: Text(
+                        AppLocalizations.of(context).t('gallery'),
+                        style: TextStyle(color: Colors.white),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepPurple,
                         padding: EdgeInsets.symmetric(vertical: 12),
@@ -166,7 +173,10 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                   child: ElevatedButton.icon(
                     onPressed: _processImage,
                     icon: Icon(Icons.auto_awesome, color: Colors.white),
-                    label: Text('Extract Transactions', style: TextStyle(color: Colors.white)),
+                    label: Text(
+                      AppLocalizations.of(context).t('extract_transactions'),
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       padding: EdgeInsets.symmetric(vertical: 12),
@@ -178,7 +188,7 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                 ),
               ],
             ],
-        
+
             // Processing Indicator
             if (_isProcessing) ...[
               Column(
@@ -190,7 +200,7 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Processing image...',
+                    AppLocalizations.of(context).t('processing_image'),
                     style: TextStyle(
                       color: ThemeProvider.getTextColor(),
                       fontSize: 16,
@@ -198,48 +208,52 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Extracting text and identifying transactions',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 12,
-                    ),
+                    AppLocalizations.of(context).t('extracting_text'),
+                    style: TextStyle(color: Colors.grey[400], fontSize: 12),
                   ),
                 ],
               ),
             ],
-        
+
             SizedBox(height: 16),
-        
+
             // Status Message
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _extractedTransactions.isNotEmpty 
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.blue.withOpacity(0.1),
+                color:
+                    _extractedTransactions.isNotEmpty
+                        ? Colors.green.withOpacity(0.1)
+                        : Colors.blue.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: _extractedTransactions.isNotEmpty 
-                      ? Colors.green.withOpacity(0.3)
-                      : Colors.blue.withOpacity(0.3),
+                  color:
+                      _extractedTransactions.isNotEmpty
+                          ? Colors.green.withOpacity(0.3)
+                          : Colors.blue.withOpacity(0.3),
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
-                    _extractedTransactions.isNotEmpty 
+                    _extractedTransactions.isNotEmpty
                         ? Icons.check_circle_outline
                         : Icons.info_outline,
-                    color: _extractedTransactions.isNotEmpty 
-                        ? Colors.green
-                        : Colors.blue,
+                    color:
+                        _extractedTransactions.isNotEmpty
+                            ? Colors.green
+                            : Colors.blue,
                     size: 16,
                   ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _status,
+                      _status.isNotEmpty
+                          ? _status
+                          : AppLocalizations.of(
+                            context,
+                          ).t('select_image_prompt'),
                       style: TextStyle(
                         color: ThemeProvider.getTextColor(),
                         fontSize: 12,
@@ -249,12 +263,17 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                 ],
               ),
             ),
-        
+
             // Extracted Transactions Preview
             if (_extractedTransactions.isNotEmpty) ...[
               SizedBox(height: 16),
               Text(
-                'Found ${_extractedTransactions.length} transaction(s):',
+                AppLocalizations.of(context)
+                    .t('found_transactions')
+                    .replaceFirst(
+                      '{n}',
+                      _extractedTransactions.length.toString(),
+                    ),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 14,
@@ -279,12 +298,13 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                       child: Row(
                         children: [
                           Icon(
-                            transaction.type == 'income' 
-                                ? Icons.trending_up 
+                            transaction.type == 'income'
+                                ? Icons.trending_up
                                 : Icons.trending_down,
-                            color: transaction.type == 'income' 
-                                ? Colors.green 
-                                : Colors.red,
+                            color:
+                                transaction.type == 'income'
+                                    ? Colors.green
+                                    : Colors.red,
                             size: 16,
                           ),
                           SizedBox(width: 8),
@@ -301,7 +321,7 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                                   ),
                                 ),
                                 Text(
-                                  '${transaction.category} • \$${transaction.amount.toStringAsFixed(2)}',
+                                  '${transaction.category} • ${CurrencyService.instance.formatAmount(transaction.amount)}',
                                   style: TextStyle(
                                     color: Colors.grey[400],
                                     fontSize: 10,
@@ -331,7 +351,7 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
                     ),
                   ),
                   child: Text(
-                    'Add All Transactions',
+                    AppLocalizations.of(context).t('add_all_transactions'),
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -359,12 +379,12 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
         setState(() {
           _selectedImage = File(image.path);
           _extractedTransactions.clear();
-          _status = 'Image selected. Tap "Extract Transactions" to process.';
+          _status = AppLocalizations.of(context).t('image_selected_prompt');
         });
       }
     } catch (e) {
       setState(() {
-        _status = 'Error selecting image: ${e.toString()}';
+        _status = '${AppLocalizations.of(context).t('error')} ${e.toString()}';
       });
     }
   }
@@ -374,37 +394,44 @@ class _ImageInputWidgetState extends State<ImageInputWidget> {
 
     setState(() {
       _isProcessing = true;
-      _status = 'Processing image...';
+      _status = AppLocalizations.of(context).t('processing_image');
     });
 
     try {
       // Extract text from image
-      String extractedText = await ImageOCRService.extractTextFromImage(_selectedImage!);
-      
+      String extractedText = await ImageOCRService.extractTextFromImage(
+        _selectedImage!,
+      );
+
       if (extractedText.isEmpty) {
         setState(() {
           _isProcessing = false;
-          _status = 'No text found in image. Please try a clearer image.';
+          _status = AppLocalizations.of(context).t('no_text_found');
         });
         return;
       }
 
       // Parse transactions from extracted text
-      List<TransactionData> transactions = await ImageOCRService.parseTransactionsFromText(extractedText);
+      List<TransactionData> transactions =
+          await ImageOCRService.parseTransactionsFromText(extractedText);
 
       setState(() {
         _isProcessing = false;
         _extractedTransactions = transactions;
         if (transactions.isEmpty) {
-          _status = 'No transactions found in the image. Please try a receipt or bank statement.';
+          _status = AppLocalizations.of(
+            context,
+          ).t('no_transactions_found_image');
         } else {
-          _status = 'Successfully extracted ${transactions.length} transaction(s)!';
+          _status = AppLocalizations.of(context)
+              .t('found_transactions')
+              .replaceFirst('{n}', transactions.length.toString());
         }
       });
     } catch (e) {
       setState(() {
         _isProcessing = false;
-        _status = 'Error processing image: ${e.toString()}';
+        _status = '${AppLocalizations.of(context).t('error')} ${e.toString()}';
       });
     }
   }

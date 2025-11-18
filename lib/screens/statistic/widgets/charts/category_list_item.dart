@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:app/models/models.dart';
 import 'package:app/models/themes.dart';
+import 'package:app/services/currency_service.dart';
 
 class CategoryListItem extends StatelessWidget {
   final Category category;
@@ -73,7 +74,7 @@ class CategoryListItem extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${amount.toStringAsFixed(2)}',
+                CurrencyService.instance.formatAmount(amount),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 16,
@@ -82,10 +83,7 @@ class CategoryListItem extends StatelessWidget {
               ),
               Text(
                 '${percentage.toStringAsFixed(1)}%',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey[400], fontSize: 12),
               ),
             ],
           ),

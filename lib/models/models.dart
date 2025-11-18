@@ -2,6 +2,27 @@ import 'package:flutter/material.dart';
 
 enum TransactionType { income, expense }
 
+// Constant icon lookup map
+const Map<int, IconData> _iconMap = {
+  0xe3b0: Icons.home,
+  0xe559: Icons.shopping_cart,
+  0xe1b3: Icons.restaurant,
+  0xe3a4: Icons.directions_car,
+  0xe5d8: Icons.movie,
+  0xe8af: Icons.fitness_center,
+  0xe529: Icons.school,
+  0xe0c6: Icons.healing,
+  0xe0a9: Icons.pets,
+  0xeb51: Icons.work,
+  0xe47f: Icons.attach_money,
+  0xe5c3: Icons.card_giftcard,
+  0xe628: Icons.card_travel,
+};
+
+IconData _getIconByCodePoint(int codePoint) {
+  return _iconMap[codePoint] ?? Icons.category;
+}
+
 class Transaction {
   final String id;
   final String title;
@@ -9,6 +30,15 @@ class Transaction {
   final double amount;
   final DateTime date;
   final TransactionType type;
+  // Optional fields for scheduled transactions and loans/IOUs
+  final bool isScheduled;
+  final DateTime? scheduledDate;
+  final bool isLoan;
+  final String? counterparty;
+  final String? loanDirection; // 'lend' or 'borrow'
+  final bool isSettled;
+  final bool isPending; // True if awaiting user confirmation
+  final String inputCurrency; // 'USD' or 'UZS' - currency used when entering
 
   Transaction({
     required this.id,
@@ -17,6 +47,14 @@ class Transaction {
     required this.amount,
     required this.date,
     required this.type,
+    this.isScheduled = false,
+    this.scheduledDate,
+    this.isLoan = false,
+    this.counterparty,
+    this.loanDirection,
+    this.isSettled = false,
+    this.isPending = false,
+    this.inputCurrency = 'USD', // Default to USD if not specified
   });
 
   Map<String, dynamic> toJson() {
@@ -27,6 +65,14 @@ class Transaction {
       'amount': amount,
       'date': date.toIso8601String(),
       'type': type.toString(),
+      'isScheduled': isScheduled,
+      'scheduledDate': scheduledDate?.toIso8601String(),
+      'isLoan': isLoan,
+      'counterparty': counterparty,
+      'loanDirection': loanDirection,
+      'isSettled': isSettled,
+      'isPending': isPending,
+      'inputCurrency': inputCurrency,
     };
   }
 
@@ -35,11 +81,26 @@ class Transaction {
       id: json['id'],
       title: json['title'],
       categoryId: json['categoryId'],
-      amount: json['amount'].toDouble(),
+      amount:
+          (json['amount'] is int)
+              ? (json['amount'] as int).toDouble()
+              : json['amount'].toDouble(),
       date: DateTime.parse(json['date']),
-      type: json['type'] == 'TransactionType.income'
-          ? TransactionType.income
-          : TransactionType.expense,
+      type:
+          json['type'] == 'TransactionType.income'
+              ? TransactionType.income
+              : TransactionType.expense,
+      isScheduled: json['isScheduled'] ?? false,
+      scheduledDate:
+          json['scheduledDate'] != null
+              ? DateTime.parse(json['scheduledDate'])
+              : null,
+      isLoan: json['isLoan'] ?? false,
+      counterparty: json['counterparty'],
+      loanDirection: json['loanDirection'],
+      isSettled: json['isSettled'] ?? false,
+      isPending: json['isPending'] ?? false,
+      inputCurrency: json['inputCurrency'] ?? 'USD',
     );
   }
 }
@@ -121,7 +182,7 @@ class Category {
     return Category(
       id: json['id'],
       name: json['name'],
-      icon: IconData(json['icon'], fontFamily: 'MaterialIcons'),
+      icon: _getIconByCodePoint(json['icon']),
       color: Color(json['color']),
       type: json['type'],
     );

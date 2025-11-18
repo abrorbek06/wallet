@@ -3,10 +3,13 @@ import 'package:app/screens/settings/widgets/info_section.dart';
 import 'package:app/screens/settings/widgets/theme_section.dart';
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/currency_service.dart';
 import '../../models/models.dart';
 import '../../models/themes.dart';
 import '../../functions/category_managment.dart';
 import '../../services/telegram_service.dart';
+import '../../services/telegram_sync_service.dart';
+import '../../models/storage.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String currentTheme;
@@ -29,10 +32,22 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _telegramAutoSync = false;
+  final TextEditingController _telegramUrlController = TextEditingController();
   @override
   void initState() {
     super.initState();
     CategoryManager.loadSavedCategories();
+    _loadTelegramSettings();
+  }
+
+  void _loadTelegramSettings() async {
+    final enabled = await loadTelegramAutoSync();
+    final url = await loadTelegramBotUrl();
+    setState(() {
+      _telegramAutoSync = enabled;
+      _telegramUrlController.text = url ?? 'http://127.0.0.1:5001';
+    });
   }
 
   @override
@@ -62,6 +77,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const SizedBox(height: 24),
+          // Currency selection
+          ListTile(
+            tileColor: ThemeProvider.getCardColor(),
+            title: Text(
+              AppLocalizations.of(context).t('currency'),
+              style: TextStyle(color: ThemeProvider.getTextColor()),
+            ),
+            subtitle: Text(
+              CurrencyService.instance.currency == Currency.UZS
+                  ? "so'm"
+                  : r'USD',
+              style: TextStyle(color: Colors.grey[400]),
+            ),
+            trailing: Icon(Icons.chevron_right, color: Colors.grey[400]),
+            onTap: _showCurrencyDialog,
+          ),
+          const SizedBox(height: 24),
           CategorySection(
             onAddCategory: (cat) {
               widget.onAddCategory(cat);
@@ -89,6 +121,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
           InfoSection(onRateApp: _rateApp, onHelpPressed: _showFeedbackDialog),
+          const SizedBox(height: 24),
+          // Telegram Bot Sync
+          Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: ThemeProvider.getCardColor(),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Telegram Sync',
+                      style: TextStyle(
+                        color: ThemeProvider.getTextColor(),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Switch(
+                      value: _telegramAutoSync,
+                      onChanged: (v) async {
+                        await saveTelegramAutoSync(v);
+                        setState(() => _telegramAutoSync = v);
+                      },
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                TextField(
+                  controller: _telegramUrlController,
+                  decoration: InputDecoration(
+                    labelText: 'Bot Server URL',
+                    hintText: 'http://127.0.0.1:5001',
+                  ),
+                  onSubmitted: (val) async {
+                    await saveTelegramBotUrl(val.trim());
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Saved Telegram bot URL')),
+                    );
+                  },
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        final sync = TelegramSyncService(
+                          baseUrl: _telegramUrlController.text.trim(),
+                        );
+                        final added = await sync.fetchAndMergeTransactions();
+                        if (added > 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Imported $added transactions from Telegram',
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('No new transactions found'),
+                            ),
+                          );
+                        }
+                      },
+                      child: Text('Sync Now'),
+                    ),
+                    SizedBox(width: 12),
+                    TextButton(
+                      onPressed: () async {
+                        await saveTelegramBotUrl(
+                          _telegramUrlController.text.trim(),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Saved Telegram bot URL')),
+                        );
+                      },
+                      child: Text('Save'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -111,33 +231,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showDialog(
       context: context,
       builder: (context) {
+        return Container(
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+          child: AlertDialog(
+            backgroundColor: ThemeProvider.getCardColor(),
+            title: Text(
+              AppLocalizations.of(context).t('select_language'),
+              style: TextStyle(color: ThemeProvider.getTextColor()),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: Text(AppLocalizations.of(context).t('uzbek')),
+                  onTap: () {
+                    widget.onLocaleChanged?.call(Locale('uz'));
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  title: Text(AppLocalizations.of(context).t('russian')),
+                  onTap: () {
+                    widget.onLocaleChanged?.call(Locale('ru'));
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  title: Text(AppLocalizations.of(context).t('english')),
+                  onTap: () {
+                    widget.onLocaleChanged?.call(Locale('en'));
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCurrencyDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
         return AlertDialog(
           backgroundColor: ThemeProvider.getCardColor(),
           title: Text(
-            AppLocalizations.of(context).t('select_language'),
+            AppLocalizations.of(context).t('select_currency'),
             style: TextStyle(color: ThemeProvider.getTextColor()),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: Text(AppLocalizations.of(context).t('uzbek')),
-                onTap: () {
-                  widget.onLocaleChanged?.call(Locale('uz'));
+                title: Text('USD'),
+                onTap: () async {
+                  await CurrencyService.instance.setCurrency(Currency.USD);
+                  setState(() {});
                   Navigator.pop(context);
                 },
               ),
               ListTile(
-                title: Text(AppLocalizations.of(context).t('russian')),
-                onTap: () {
-                  widget.onLocaleChanged?.call(Locale('ru'));
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: Text(AppLocalizations.of(context).t('english')),
-                onTap: () {
-                  widget.onLocaleChanged?.call(Locale('en'));
+                title: Text("so'm"),
+                onTap: () async {
+                  await CurrencyService.instance.setCurrency(Currency.UZS);
+                  setState(() {});
                   Navigator.pop(context);
                 },
               ),
@@ -192,14 +351,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextField(
                     controller: commentController,
                     maxLines: 3,
-                    decoration: InputDecoration(hintText: 'Optional comment'),
+                    decoration: InputDecoration(
+                      hintText: AppLocalizations.of(
+                        context,
+                      ).t('optional_comment'),
+                    ),
                   ),
                 ],
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                  child: Text(AppLocalizations.of(context).t('cancel')),
                 ),
                 TextButton(
                   onPressed: () async {
@@ -236,7 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     }
                   },
-                  child: const Text('Send'),
+                  child: Text(AppLocalizations.of(context).t('send')),
                 ),
               ],
             );
@@ -267,14 +430,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 controller: messageController,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  hintText: 'Describe the issue or suggestion',
+                  hintText: AppLocalizations.of(context).t('describing_issue'),
                 ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: contactController,
                 decoration: InputDecoration(
-                  hintText: 'Optional: contact (email/telegram)',
+                  hintText: AppLocalizations.of(
+                    context,
+                  ).t('contact_email_telegram'),
                 ),
               ),
             ],
@@ -282,7 +447,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context).t('cancel')),
             ),
             TextButton(
               onPressed: () async {
@@ -333,18 +498,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         return AlertDialog(
                           backgroundColor: ThemeProvider.getCardColor(),
                           title: Text(
-                            'Telegram not configured',
+                            AppLocalizations.of(
+                              context,
+                            ).t('configure_telegram'),
                             style: TextStyle(
                               color: ThemeProvider.getTextColor(),
                             ),
                           ),
                           content: Text(
-                            'Please configure your Telegram bot token and chat id to receive feedback.',
+                            AppLocalizations.of(
+                              context,
+                            ).t('telegram_not_configured'),
                           ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Cancel'),
+                              child: Text(
+                                AppLocalizations.of(context).t('cancel'),
+                              ),
                             ),
                           ],
                         );
@@ -355,7 +526,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Failed to send feedback: ${e.toString()}',
+                          '${AppLocalizations.of(context).t('failed_send_feedback')} ${e.toString()}',
                         ),
                         backgroundColor: Colors.red,
                       ),
@@ -363,7 +534,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
                 }
               },
-              child: const Text('Send'),
+              child: Text(AppLocalizations.of(context).t('send')),
             ),
           ],
         );

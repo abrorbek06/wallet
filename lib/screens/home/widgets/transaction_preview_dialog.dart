@@ -1,4 +1,6 @@
 import 'package:app/functions/category_managment.dart';
+import 'package:app/l10n/app_localizations.dart';
+import 'package:app/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import '../../../models/models.dart';
 import '../../../models/themes.dart';
@@ -19,10 +21,11 @@ class TransactionPreviewDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIncome = transactionData.type == 'income';
-    final categories = isIncome 
-        ? CategoryManager.incomeCategories 
-        : CategoryManager.expenseCategories;
-    
+    final categories =
+        isIncome
+            ? CategoryManager.incomeCategories
+            : CategoryManager.expenseCategories;
+
     final category = categories.firstWhere(
       (cat) => cat.name.toLowerCase() == transactionData.category.toLowerCase(),
       orElse: () => categories.first,
@@ -45,12 +48,16 @@ class TransactionPreviewDialog extends StatelessWidget {
                   size: 24,
                 ),
                 SizedBox(width: 12),
-                Text(
-                  'Transaction Preview',
-                  style: TextStyle(
-                    color: ThemeProvider.getTextColor(),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(context).t('transaction_preview'),
+                    style: TextStyle(
+                      color: ThemeProvider.getTextColor(),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -63,16 +70,19 @@ class TransactionPreviewDialog extends StatelessWidget {
               padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: isIncome 
-                      ? [Colors.green.shade400, Colors.green.shade600]
-                      : [Colors.red.shade400, Colors.red.shade600],
+                  colors:
+                      isIncome
+                          ? [Colors.green.shade400, Colors.green.shade600]
+                          : [Colors.red.shade400, Colors.red.shade600],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: (isIncome ? Colors.green : Colors.red).withOpacity(0.3),
+                    color: (isIncome ? Colors.green : Colors.red).withOpacity(
+                      0.3,
+                    ),
                     blurRadius: 8,
                     offset: Offset(0, 4),
                   ),
@@ -89,7 +99,10 @@ class TransactionPreviewDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      isIncome ? 'INCOME' : 'EXPENSE',
+                      (isIncome
+                              ? AppLocalizations.of(context).t('income')
+                              : AppLocalizations.of(context).t('expense'))
+                          .toUpperCase(),
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -100,9 +113,11 @@ class TransactionPreviewDialog extends StatelessWidget {
                   ),
                   SizedBox(height: 16),
 
-                  // Amount - always $200
+                  // Amount
                   Text(
-                    '\$${transactionData.amount.toStringAsFixed(2)}',
+                    CurrencyService.instance.formatAmount(
+                      transactionData.amount,
+                    ),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 32,
@@ -167,7 +182,7 @@ class TransactionPreviewDialog extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      'Cancel',
+                      AppLocalizations.of(context).t('cancel'),
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w600,
@@ -187,14 +202,16 @@ class TransactionPreviewDialog extends StatelessWidget {
                       final transaction = Transaction(
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
                         title: transactionData.description,
-                        amount: transactionData.type == 'income' 
-                            ? transactionData.amount 
-                            : -transactionData.amount,
+                        amount: transactionData.amount,
                         categoryId: categoryId,
                         date: DateTime.now(),
-                        type: transactionData.type == 'income' 
-                            ? TransactionType.income 
-                            : TransactionType.expense,
+                        type:
+                            transactionData.type == 'income'
+                                ? TransactionType.income
+                                : TransactionType.expense,
+                        isScheduled: false,
+                        isLoan: false,
+                        isSettled: true,
                       );
 
                       onConfirm(transaction);
@@ -207,7 +224,7 @@ class TransactionPreviewDialog extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      'Add Transaction',
+                      AppLocalizations.of(context).t('add_transaction'),
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -224,16 +241,17 @@ class TransactionPreviewDialog extends StatelessWidget {
   }
 
   String _getSuggestedCategoryId(String categoryName, String type) {
-    final categories = type == 'income' 
-        ? CategoryManager.incomeCategories 
-        : CategoryManager.expenseCategories;
-    
+    final categories =
+        type == 'income'
+            ? CategoryManager.incomeCategories
+            : CategoryManager.expenseCategories;
+
     for (var category in categories) {
       if (category.name.toLowerCase() == categoryName.toLowerCase()) {
         return category.id;
       }
     }
-    
+
     return categories.isNotEmpty ? categories.first.id : '';
   }
 }

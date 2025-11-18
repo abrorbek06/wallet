@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:app/l10n/app_localizations.dart';
 
 import '../../functions/category_managment.dart';
 import '../../models/models.dart';
 import '../../models/themes.dart';
+
 class AddTransactionDialog extends StatefulWidget {
   final Function(Transaction) onAddTransaction;
 
@@ -24,9 +26,9 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
   @override
   Widget build(BuildContext context) {
     final categories =
-    _selectedType == TransactionType.income
-        ? CategoryManager.incomeCategories
-        : CategoryManager.expenseCategories;
+        _selectedType == TransactionType.income
+            ? CategoryManager.incomeCategories
+            : CategoryManager.expenseCategories;
 
     return Dialog(
       backgroundColor: ThemeProvider.getCardColor(),
@@ -39,7 +41,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Add Transaction',
+                AppLocalizations.of(context).t('add_transaction'),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 20,
@@ -61,24 +63,24 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                         onTap:
                             () => setState(
                               () => _selectedType = TransactionType.income,
-                        ),
+                            ),
                         child: Container(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color:
-                            _selectedType == TransactionType.income
-                                ? Colors.green
-                                : Colors.transparent,
+                                _selectedType == TransactionType.income
+                                    ? Colors.green
+                                    : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'Income',
+                            AppLocalizations.of(context).t('income'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color:
-                              _selectedType == TransactionType.income
-                                  ? Colors.white
-                                  : ThemeProvider.getTextColor(),
+                                  _selectedType == TransactionType.income
+                                      ? Colors.white
+                                      : ThemeProvider.getTextColor(),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -90,24 +92,24 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                         onTap:
                             () => setState(
                               () => _selectedType = TransactionType.expense,
-                        ),
+                            ),
                         child: Container(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color:
-                            _selectedType == TransactionType.expense
-                                ? Colors.red
-                                : Colors.transparent,
+                                _selectedType == TransactionType.expense
+                                    ? Colors.red
+                                    : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'Expense',
+                            AppLocalizations.of(context).t('expense'),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color:
-                              _selectedType == TransactionType.expense
-                                  ? Colors.white
-                                  : ThemeProvider.getTextColor(),
+                                  _selectedType == TransactionType.expense
+                                      ? Colors.white
+                                      : ThemeProvider.getTextColor(),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -124,7 +126,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                 controller: _titleController,
                 style: TextStyle(color: ThemeProvider.getTextColor()),
                 decoration: InputDecoration(
-                  labelText: 'Title',
+                  labelText: AppLocalizations.of(context).t('title'),
                   labelStyle: TextStyle(color: Colors.grey),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
@@ -139,7 +141,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter a title';
+                    return AppLocalizations.of(context).t('please_enter_title');
                   }
                   return null;
                 },
@@ -152,9 +154,13 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                 keyboardType: TextInputType.number,
                 style: TextStyle(color: ThemeProvider.getTextColor()),
                 decoration: InputDecoration(
-                  labelText: 'Amount',
+                  labelText: AppLocalizations.of(context).t('amount'),
                   labelStyle: TextStyle(color: Colors.grey),
-                  prefixIcon: Icon(Icons.attach_money, color: Colors.grey, size: 20,),
+                  prefixIcon: Icon(
+                    Icons.attach_money,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
                   // prefixText: 'so\'m',
                   // hintText: "so'm",
                   enabledBorder: OutlineInputBorder(
@@ -170,10 +176,14 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter an amount';
+                    return AppLocalizations.of(
+                      context,
+                    ).t('please_enter_amount');
                   }
                   if (double.tryParse(value) == null) {
-                    return 'Please enter a valid number';
+                    return AppLocalizations.of(
+                      context,
+                    ).t('please_enter_valid_number');
                   }
                   return null;
                 },
@@ -185,7 +195,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                 value: _selectedCategoryId,
                 style: TextStyle(color: ThemeProvider.getTextColor()),
                 decoration: InputDecoration(
-                  labelText: 'Category',
+                  labelText: AppLocalizations.of(context).t('category'),
                   labelStyle: TextStyle(color: Colors.grey),
                   enabledBorder: OutlineInputBorder(
                     borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
@@ -199,22 +209,22 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                   ),
                 ),
                 items:
-                categories.map((category) {
-                  return DropdownMenuItem<String>(
-                    value: category.id,
-                    child: Row(
-                      children: [
-                        Icon(
-                          category.icon,
-                          color: category.color,
-                          size: 20,
+                    categories.map((category) {
+                      return DropdownMenuItem<String>(
+                        value: category.id,
+                        child: Row(
+                          children: [
+                            Icon(
+                              category.icon,
+                              color: category.color,
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Text(category.name),
+                          ],
                         ),
-                        SizedBox(width: 12),
-                        Text(category.name),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
                 onChanged: (value) {
                   setState(() {
                     _selectedCategoryId = value;
@@ -222,7 +232,9 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                 },
                 validator: (value) {
                   if (value == null) {
-                    return 'Please select a categoryy';
+                    return AppLocalizations.of(
+                      context,
+                    ).t('please_select_category');
                   }
                   return null;
                 },
@@ -236,7 +248,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
-                      'Cancel',
+                      AppLocalizations.of(context).t('cancel'),
                       style: TextStyle(color: Colors.grey[400]),
                     ),
                   ),
@@ -244,6 +256,20 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                   ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
+                        if (_selectedCategoryId == null ||
+                            _selectedCategoryId!.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                AppLocalizations.of(
+                                  context,
+                                ).t('please_select_category'),
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
                         final transaction = Transaction(
                           id: DateTime.now().millisecondsSinceEpoch.toString(),
                           title: _titleController.text,
@@ -264,7 +290,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                       ),
                     ),
                     child: Text(
-                      'Add Transaction',
+                      AppLocalizations.of(context).t('add_transaction'),
                       style: TextStyle(color: Colors.white),
                     ),
                   ),

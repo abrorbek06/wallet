@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:app/models/models.dart';
 import 'package:app/functions/category_managment.dart';
 import 'package:app/models/themes.dart';
+import '../../../l10n/app_localizations.dart';
+import 'package:app/services/currency_service.dart';
 
 class TransactionItem extends StatelessWidget {
   final Transaction transaction;
@@ -18,11 +20,12 @@ class TransactionItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIncome = transaction.type == TransactionType.income;
+    final defaultCategoryName = AppLocalizations.of(context).t('other');
     final category =
         CategoryManager.getCategoryById(transaction.categoryId) ??
         Category(
           id: '',
-          name: 'Other',
+          name: defaultCategoryName,
           icon: Icons.category,
           color: Colors.grey,
           type: isIncome ? 'income' : 'expense',
@@ -36,12 +39,18 @@ class TransactionItem extends StatelessWidget {
     if (difference.inDays == 0) {
       dateText =
           difference.inHours == 0
-              ? '${difference.inMinutes}m ago'
-              : '${difference.inHours}h ago';
+              ? AppLocalizations.of(context)
+                  .t('minutes_ago')
+                  .replaceFirst('{n}', difference.inMinutes.toString())
+              : AppLocalizations.of(context)
+                  .t('hours_ago')
+                  .replaceFirst('{n}', difference.inHours.toString());
     } else if (difference.inDays == 1) {
-      dateText = 'Yesterday';
+      dateText = AppLocalizations.of(context).t('yesterday');
     } else if (difference.inDays < 7) {
-      dateText = '${difference.inDays} days ago';
+      dateText = AppLocalizations.of(
+        context,
+      ).t('days_ago').replaceFirst('{n}', difference.inDays.toString());
     } else {
       dateText = '${transaction.date.month}/${transaction.date.day}';
     }
@@ -60,8 +69,8 @@ class TransactionItem extends StatelessWidget {
           children: [
             _buildCategoryIcon(category),
             SizedBox(width: 16),
-            _buildTransactionDetails(category, dateText),
-            _buildAmountAndType(isIncome),
+            _buildTransactionDetails(context, category, dateText),
+            _buildAmountAndType(context, isIncome),
           ],
         ),
       ),
@@ -79,7 +88,11 @@ class TransactionItem extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionDetails(Category category, String dateText) {
+  Widget _buildTransactionDetails(
+    BuildContext context,
+    Category category,
+    String dateText,
+  ) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,16 +137,24 @@ class TransactionItem extends StatelessWidget {
     );
   }
 
-  Widget _buildAmountAndType(bool isIncome) {
+  Widget _buildAmountAndType(BuildContext context, bool isIncome) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(
-          '${isIncome ? '+' : '-'}\$${transaction.amount.toStringAsFixed(2)}',
+          '${isIncome ? '+' : '-'}${CurrencyService.instance.formatAmount(transaction.amount, inputCurrency: transaction.inputCurrency)}',
           style: TextStyle(
             color: isIncome ? Colors.green : Colors.red,
             fontSize:
-                transaction.amount.toStringAsFixed(2).length >= 12 ? 12 : 16,
+                CurrencyService.instance
+                            .formatAmount(
+                              transaction.amount,
+                              inputCurrency: transaction.inputCurrency,
+                            )
+                            .length >=
+                        12
+                    ? 12
+                    : 16,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -148,7 +169,9 @@ class TransactionItem extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
-            isIncome ? 'Income' : 'Expense',
+            isIncome
+                ? AppLocalizations.of(context).t('income')
+                : AppLocalizations.of(context).t('expense'),
             style: TextStyle(
               color: isIncome ? Colors.green : Colors.red,
               fontSize: 10,

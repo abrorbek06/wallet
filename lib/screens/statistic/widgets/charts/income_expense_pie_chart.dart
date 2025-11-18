@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:app/models/themes.dart';
+import '../../../../l10n/app_localizations.dart';
+import 'package:app/services/currency_service.dart';
 
 class IncomeExpensePieChart extends StatelessWidget {
   final double totalIncome;
@@ -32,7 +34,7 @@ class IncomeExpensePieChart extends StatelessWidget {
               Icon(Icons.pie_chart, color: Colors.purple, size: 24),
               SizedBox(width: 12),
               Text(
-                'Income vs Expenses',
+                AppLocalizations.of(context).t('income_vs_expenses'),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 20,
@@ -88,9 +90,21 @@ class IncomeExpensePieChart extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (totalIncome > 0) _buildLegendItem('Income', Colors.green, totalIncome),
+              if (totalIncome > 0)
+                _buildLegendItem(
+                  context,
+                  AppLocalizations.of(context).t('income'),
+                  Colors.green,
+                  totalIncome,
+                ),
               if (totalIncome > 0 && totalExpense > 0) SizedBox(height: 12),
-              if (totalExpense > 0) _buildLegendItem('Expenses', Colors.red, totalExpense),
+              if (totalExpense > 0)
+                _buildLegendItem(
+                  context,
+                  AppLocalizations.of(context).t('expenses'),
+                  Colors.red,
+                  totalExpense,
+                ),
             ],
           ),
         ],
@@ -98,7 +112,12 @@ class IncomeExpensePieChart extends StatelessWidget {
     );
   }
 
-  Widget _buildLegendItem(String label, Color color, double amount) {
+  Widget _buildLegendItem(
+    BuildContext context,
+    String label,
+    Color color,
+    double amount,
+  ) {
     return Row(
       children: [
         Container(
@@ -122,11 +141,8 @@ class IncomeExpensePieChart extends StatelessWidget {
               ),
             ),
             Text(
-              '\$${amount.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 12,
-              ),
+              CurrencyService.instance.formatAmount(amount),
+              style: TextStyle(color: Colors.grey[400], fontSize: 12),
             ),
           ],
         ),

@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:app/models/models.dart';
 
 import 'package:app/models/themes.dart';
+import '../../../../l10n/app_localizations.dart';
 
 class IncomeCategoriesChart extends StatelessWidget {
   final Map<String, double> incomeByCategory;
@@ -13,13 +14,10 @@ class IncomeCategoriesChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (incomeByCategory.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(context);
     }
 
-    final totalIncome = incomeByCategory.values.fold(
-      0.0,
-      (sum, amount) => sum + amount,
-    );
+    // total computed inside chart builder to keep scope local
 
     return Column(
       children: [
@@ -32,9 +30,9 @@ class IncomeCategoriesChart extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
+              _buildHeader(context),
               SizedBox(height: 20),
-              SizedBox(height: 200, child: PieChart(_buildChartData())),
+              SizedBox(height: 200, child: PieChart(_buildChartData(context))),
             ],
           ),
         ),
@@ -42,7 +40,7 @@ class IncomeCategoriesChart extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -54,7 +52,7 @@ class IncomeCategoriesChart extends StatelessWidget {
           Icon(Icons.category_outlined, size: 64, color: Colors.grey[400]),
           SizedBox(height: 16),
           Text(
-            'No income data available',
+            AppLocalizations.of(context).t('no_income_data'),
             style: TextStyle(color: Colors.grey[400], fontSize: 16),
           ),
         ],
@@ -62,13 +60,13 @@ class IncomeCategoriesChart extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
         Icon(Icons.category, color: Colors.green, size: 24),
         SizedBox(width: 12),
         Text(
-          'Income by Category',
+          AppLocalizations.of(context).t('income_by_category'),
           style: TextStyle(
             color: ThemeProvider.getTextColor(),
             fontSize: 20,
@@ -79,7 +77,12 @@ class IncomeCategoriesChart extends StatelessWidget {
     );
   }
 
-  PieChartData _buildChartData() {
+  PieChartData _buildChartData(BuildContext context) {
+    final totalIncome = incomeByCategory.values.fold(
+      0.0,
+      (sum, amount) => sum + amount,
+    );
+
     return PieChartData(
       sections:
           incomeByCategory.entries.map((entry) {
@@ -87,16 +90,13 @@ class IncomeCategoriesChart extends StatelessWidget {
                 CategoryManager.getCategoryById(entry.key) ??
                 Category(
                   id: '',
-                  name: 'Other',
+                  name: AppLocalizations.of(context).t('other'),
                   icon: Icons.category,
                   color: Colors.grey,
                   type: 'income',
                 );
-            final total = incomeByCategory.values.fold(
-              0.0,
-              (sum, amount) => sum + amount,
-            );
-            final percentage = total > 0 ? (entry.value / total) * 100 : 0.0;
+            final percentage =
+                totalIncome > 0 ? (entry.value / totalIncome) * 100 : 0.0;
 
             return PieChartSectionData(
               value: entry.value,

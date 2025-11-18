@@ -1,5 +1,8 @@
 import 'package:app/screens/home/services/voice_input_service.dart';
+import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 
 import '../../../functions/category_managment.dart';
 import '../../../models/models.dart';
@@ -27,6 +30,13 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
   final DateTime _selectedDate = DateTime.now();
   bool _isVoiceMode = false;
   bool _isImageMode = false; // Added _isImageMode variable
+  // New fields for scheduled transactions and loans
+  bool _isScheduled = false;
+  DateTime? _scheduledDate;
+  final bool _isLoan = false;
+  final String _counterparty = '';
+  final String _loanDirection = 'lend'; // 'lend' or 'borrow'
+  String _inputCurrency = 'USD'; // Currency for input (USD or UZS)
 
   @override
   void initState() {
@@ -38,20 +48,79 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     await _voiceService.initialize();
   }
 
+  Future<DateTime?> _pickDate(BuildContext context, {DateTime? initial}) async {
+    final firstDate = DateTime.now();
+    final lastDate = DateTime.now().add(Duration(days: 365 * 5));
+
+    if (Platform.isIOS) {
+      DateTime tempPicked = initial ?? DateTime.now().add(Duration(days: 1));
+      return await showCupertinoModalPopup<DateTime>(
+        context: context,
+        builder: (context) {
+          return Container(
+            height: 320,
+            color: ThemeProvider.getBackgroundColor(),
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  color: ThemeProvider.getCardColor(),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CupertinoButton(
+                        child: Text(AppLocalizations.of(context).t('cancel')),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      CupertinoButton(
+                        child: Text(AppLocalizations.of(context).t('done')),
+                        onPressed: () => Navigator.of(context).pop(tempPicked),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.date,
+                    initialDateTime: tempPicked,
+                    minimumDate: firstDate,
+                    maximumDate: lastDate,
+                    onDateTimeChanged: (DateTime newDate) {
+                      tempPicked = newDate;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    return await showDatePicker(
+      context: context,
+      initialDate: initial ?? DateTime.now().add(Duration(days: 1)),
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final categories = _selectedType == TransactionType.income
-        ? CategoryManager.incomeCategories
-        : CategoryManager.expenseCategories;
+    final categories =
+        _selectedType == TransactionType.income
+            ? CategoryManager.incomeCategories
+            : CategoryManager.expenseCategories;
 
     return Dialog(
       backgroundColor: ThemeProvider.getCardColor(),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         padding: EdgeInsets.all(20),
-        child: _isVoiceMode 
-            ? _buildVoiceInputMode() 
-            : _isImageMode 
+        child:
+            _isVoiceMode
+                ? _buildVoiceInputMode()
+                : _isImageMode
                 ? _buildImageInputMode()
                 : _buildManualInputMode(categories),
       ),
@@ -70,7 +139,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               children: [
                 Expanded(
                   child: Text(
-                    'Add Transaction',
+                    AppLocalizations.of(context).t('add_transaction'),
                     style: TextStyle(
                       color: ThemeProvider.getTextColor(),
                       fontSize: 20,
@@ -90,18 +159,12 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                     decoration: BoxDecoration(
                       color: Colors.orange.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.orange.withOpacity(0.3),
-                      ),
+                      border: Border.all(color: Colors.orange.withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.image,
-                          color: Colors.orange,
-                          size: 16,
-                        ),
+                        Icon(Icons.image, color: Colors.orange, size: 16),
                         // SizedBox(width: 4),
                         // Text(
                         //   'Image',
@@ -134,11 +197,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.mic,
-                          color: Colors.deepPurple,
-                          size: 16,
-                        ),
+                        Icon(Icons.mic, color: Colors.deepPurple, size: 16),
                         // SizedBox(width: 4),
                         // Text(
                         //   'Voice',
@@ -155,7 +214,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               ],
             ),
             SizedBox(height: 20),
-        
+
             // Transaction Type Toggle
             Container(
               decoration: BoxDecoration(
@@ -166,25 +225,29 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() {
-                        _selectedType = TransactionType.income;
-                        _selectedCategoryId = null; // Reset category selection
-                      }),
+                      onTap:
+                          () => setState(() {
+                            _selectedType = TransactionType.income;
+                            _selectedCategoryId =
+                                null; // Reset category selection
+                          }),
                       child: Container(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: _selectedType == TransactionType.income
-                              ? Colors.green
-                              : Colors.transparent,
+                          color:
+                              _selectedType == TransactionType.income
+                                  ? Colors.green
+                                  : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          'Income',
+                          AppLocalizations.of(context).t('income'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: _selectedType == TransactionType.income
-                                ? Colors.white
-                                : ThemeProvider.getTextColor(),
+                            color:
+                                _selectedType == TransactionType.income
+                                    ? Colors.white
+                                    : ThemeProvider.getTextColor(),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -193,25 +256,29 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() {
-                        _selectedType = TransactionType.expense;
-                        _selectedCategoryId = null; // Reset category selection
-                      }),
+                      onTap:
+                          () => setState(() {
+                            _selectedType = TransactionType.expense;
+                            _selectedCategoryId =
+                                null; // Reset category selection
+                          }),
                       child: Container(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: _selectedType == TransactionType.expense
-                              ? Colors.red
-                              : Colors.transparent,
+                          color:
+                              _selectedType == TransactionType.expense
+                                  ? Colors.red
+                                  : Colors.transparent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          'Expense',
+                          AppLocalizations.of(context).t('expense'),
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: _selectedType == TransactionType.expense
-                                ? Colors.white
-                                : ThemeProvider.getTextColor(),
+                            color:
+                                _selectedType == TransactionType.expense
+                                    ? Colors.white
+                                    : ThemeProvider.getTextColor(),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -222,13 +289,13 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               ),
             ),
             SizedBox(height: 16),
-        
+
             // Title Field
             TextFormField(
               controller: _titleController,
               style: TextStyle(color: ThemeProvider.getTextColor()),
               decoration: InputDecoration(
-                labelText: 'Title',
+                labelText: AppLocalizations.of(context).t('title'),
                 labelStyle: TextStyle(color: Colors.grey),
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
@@ -243,22 +310,26 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter a title';
+                  return AppLocalizations.of(context).t('please_enter_title');
                 }
                 return null;
               },
             ),
             SizedBox(height: 16),
-        
+
             // Amount Field
             TextFormField(
               controller: _amountController,
               keyboardType: TextInputType.number,
               style: TextStyle(color: ThemeProvider.getTextColor()),
               decoration: InputDecoration(
-                labelText: 'Amount',
+                labelText: AppLocalizations.of(context).t('amount'),
                 labelStyle: TextStyle(color: Colors.grey),
-                prefixIcon: Icon(Icons.attach_money, color: Colors.grey, size: 20),
+                prefixIcon: Icon(
+                  Icons.attach_money,
+                  color: Colors.grey,
+                  size: 20,
+                ),
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
                   borderRadius: BorderRadius.circular(12),
@@ -272,22 +343,43 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter an amount';
+                  return AppLocalizations.of(context).t('please_enter_amount');
                 }
                 if (double.tryParse(value) == null) {
-                  return 'Please enter a valid number';
+                  return AppLocalizations.of(
+                    context,
+                  ).t('please_enter_valid_number');
                 }
                 return null;
               },
             ),
+            SizedBox(height: 12),
+
+            // Currency Selector for Input
+            Row(
+              children: [
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(label: Text('USD'), value: 'USD'),
+                    ButtonSegment(label: Text("so'm"), value: 'UZS'),
+                  ],
+                  selected: {_inputCurrency},
+                  onSelectionChanged: (Set<String> newSelection) {
+                    setState(() {
+                      _inputCurrency = newSelection.first;
+                    });
+                  },
+                ),
+              ],
+            ),
             SizedBox(height: 16),
-        
+
             // Category Dropdown
             DropdownButtonFormField<String>(
               value: _selectedCategoryId,
               style: TextStyle(color: ThemeProvider.getTextColor()),
               decoration: InputDecoration(
-                labelText: 'Category',
+                labelText: AppLocalizations.of(context).t('category'),
                 labelStyle: TextStyle(color: Colors.grey),
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
@@ -300,22 +392,19 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              items: categories.map((category) {
-                return DropdownMenuItem<String>(
-                  value: category.id,
-                  child: Row(
-                    children: [
-                      Icon(
-                        category.icon,
-                        color: category.color,
-                        size: 20,
+              items:
+                  categories.map((category) {
+                    return DropdownMenuItem<String>(
+                      value: category.id,
+                      child: Row(
+                        children: [
+                          Icon(category.icon, color: category.color, size: 20),
+                          SizedBox(width: 12),
+                          Text(category.name),
+                        ],
                       ),
-                      SizedBox(width: 12),
-                      Text(category.name),
-                    ],
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
               onChanged: (value) {
                 setState(() {
                   _selectedCategoryId = value;
@@ -329,7 +418,70 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               },
             ),
             SizedBox(height: 20),
-        
+            // Scheduled Transaction Toggle & Date
+            SwitchListTile(
+              value: _isScheduled,
+              title: Text(
+                'Schedule for later',
+                style: TextStyle(color: ThemeProvider.getTextColor()),
+              ),
+              onChanged: (val) async {
+                if (val) {
+                  final picked = await _pickDate(
+                    context,
+                    initial: DateTime.now().add(Duration(days: 1)),
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _isScheduled = true;
+                      _scheduledDate = picked;
+                    });
+                  }
+                } else {
+                  setState(() {
+                    _isScheduled = false;
+                    _scheduledDate = null;
+                  });
+                }
+              },
+            ),
+
+            if (_isScheduled && _scheduledDate != null) ...[
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _scheduledDate != null
+                      ? 'Scheduled: ${_scheduledDate!.month}/${_scheduledDate!.day}/${_scheduledDate!.year}'
+                      : AppLocalizations.of(context).t('no_date'),
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+              ),
+              SizedBox(height: 12),
+            ],
+
+            // if (_isLoan) ...[
+            //   // Counterparty
+            //   TextFormField(
+            //     initialValue: _counterparty,
+            //     style: TextStyle(color: ThemeProvider.getTextColor()),
+            //     decoration: InputDecoration(
+            //       labelText: 'Counterparty (who you lent/borrowed to/from)',
+            //       labelStyle: TextStyle(color: Colors.grey),
+            //       enabledBorder: OutlineInputBorder(
+            //         borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+            //         borderRadius: BorderRadius.circular(12),
+            //       ),
+            //       focusedBorder: OutlineInputBorder(
+            //         borderSide: BorderSide(
+            //           color: ThemeProvider.getPrimaryColor(),
+            //         ),
+            //         borderRadius: BorderRadius.circular(12),
+            //       ),
+            //     ),
+            //     onChanged: (v) => _counterparty = v,
+            //   ),
+            // ],
+
             // Voice Input Hint
             Container(
               padding: EdgeInsets.all(12),
@@ -339,26 +491,19 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.lightbulb_outline,
-                    color: Colors.blue,
-                    size: 16,
-                  ),
+                  Icon(Icons.lightbulb_outline, color: Colors.blue, size: 16),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Tip: Try voice input or image upload for faster entry!',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.blue, fontSize: 12),
                     ),
                   ),
                 ],
               ),
             ),
             SizedBox(height: 16),
-        
+
             // Actions
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -374,16 +519,39 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                 ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
+                      if (_selectedCategoryId == null ||
+                          _selectedCategoryId!.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              AppLocalizations.of(
+                                context,
+                              ).t('please_select_category'),
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
                       final amount = double.parse(_amountController.text);
                       final transaction = Transaction(
                         id: DateTime.now().millisecondsSinceEpoch.toString(),
                         title: _titleController.text,
                         categoryId: _selectedCategoryId!,
-                        amount: _selectedType == TransactionType.income ? amount : amount,
+                        amount: amount,
                         date: _selectedDate,
                         type: _selectedType,
+                        isScheduled: _isScheduled,
+                        scheduledDate: _scheduledDate,
+                        isLoan: _isLoan,
+                        counterparty: _isLoan ? _counterparty : null,
+                        loanDirection: _isLoan ? _loanDirection : null,
+                        // Immediate (non-scheduled) non-loan transactions are settled immediately.
+                        // Scheduled transactions must remain unsettled until user confirmation.
+                        isSettled: !_isLoan && !_isScheduled,
+                        inputCurrency: _inputCurrency,
                       );
-        
+
                       widget.onAddTransaction(transaction);
                       Navigator.pop(context);
                     }
@@ -395,7 +563,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                     ),
                   ),
                   child: Text(
-                    'Add Transaction',
+                    AppLocalizations.of(context).t('add_transaction'),
                     style: TextStyle(color: Colors.white),
                   ),
                 ),
@@ -419,14 +587,16 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
         final transaction = Transaction(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           title: transactionData.description,
-          amount: transactionData.type == 'income' 
-              ? transactionData.amount 
-              : -transactionData.amount,
+          amount: transactionData.amount,
           categoryId: categoryId,
           date: DateTime.now(),
-          type: transactionData.type == 'income' 
-              ? TransactionType.income 
-              : TransactionType.expense,
+          type:
+              transactionData.type == 'income'
+                  ? TransactionType.income
+                  : TransactionType.expense,
+          isScheduled: false,
+          isLoan: false,
+          isSettled: true,
         );
 
         widget.onAddTransaction(transaction);
@@ -452,17 +622,20 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
           );
 
           final transaction = Transaction(
-            id: DateTime.now().millisecondsSinceEpoch.toString() + 
-                 transactions.indexOf(transactionData).toString(),
+            id:
+                DateTime.now().millisecondsSinceEpoch.toString() +
+                transactions.indexOf(transactionData).toString(),
             title: transactionData.description,
-            amount: transactionData.type == 'income' 
-                ? transactionData.amount 
-                : -transactionData.amount,
+            amount: transactionData.amount,
             categoryId: categoryId,
             date: DateTime.now(),
-            type: transactionData.type == 'income' 
-                ? TransactionType.income 
-                : TransactionType.expense,
+            type:
+                transactionData.type == 'income'
+                    ? TransactionType.income
+                    : TransactionType.expense,
+            isScheduled: false,
+            isLoan: false,
+            isSettled: true,
           );
 
           widget.onAddTransaction(transaction);
@@ -479,17 +652,18 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
   }
 
   String _getSuggestedCategoryId(String categoryName, String type) {
-    final categories = type == 'income' 
-        ? CategoryManager.incomeCategories 
-        : CategoryManager.expenseCategories;
-    
+    final categories =
+        type == 'income'
+            ? CategoryManager.incomeCategories
+            : CategoryManager.expenseCategories;
+
     // Try exact match first
     for (var category in categories) {
       if (category.name.toLowerCase() == categoryName.toLowerCase()) {
         return category.id;
       }
     }
-    
+
     // Try partial match
     for (var category in categories) {
       if (category.name.toLowerCase().contains(categoryName.toLowerCase()) ||
@@ -497,7 +671,7 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
         return category.id;
       }
     }
-    
+
     // Return first category of the type as fallback
     return categories.isNotEmpty ? categories.first.id : '';
   }
@@ -509,7 +683,6 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
     super.dispose();
   }
 }
-
 
 class AddTransactionDialoge extends StatefulWidget {
   final Function(Transaction) onAddTransaction;
@@ -528,13 +701,14 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
   TransactionType _selectedType = TransactionType.expense;
   String? _selectedCategoryId;
   final DateTime _selectedDate = DateTime.now();
+  String _inputCurrency = 'USD'; // Currency for input (USD or UZS)
 
   @override
   Widget build(BuildContext context) {
     final categories =
-    _selectedType == TransactionType.income
-        ? CategoryManager.incomeCategories
-        : CategoryManager.expenseCategories;
+        _selectedType == TransactionType.income
+            ? CategoryManager.incomeCategories
+            : CategoryManager.expenseCategories;
 
     return Dialog(
       backgroundColor: ThemeProvider.getCardColor(),
@@ -547,7 +721,7 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Add Transaction',
+                AppLocalizations.of(context).t('add_transaction'),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 20,
@@ -569,14 +743,14 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                         onTap:
                             () => setState(
                               () => _selectedType = TransactionType.income,
-                        ),
+                            ),
                         child: Container(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color:
-                            _selectedType == TransactionType.income
-                                ? Colors.green
-                                : Colors.transparent,
+                                _selectedType == TransactionType.income
+                                    ? Colors.green
+                                    : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -584,9 +758,9 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color:
-                              _selectedType == TransactionType.income
-                                  ? Colors.white
-                                  : ThemeProvider.getTextColor(),
+                                  _selectedType == TransactionType.income
+                                      ? Colors.white
+                                      : ThemeProvider.getTextColor(),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -598,14 +772,14 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                         onTap:
                             () => setState(
                               () => _selectedType = TransactionType.expense,
-                        ),
+                            ),
                         child: Container(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color:
-                            _selectedType == TransactionType.expense
-                                ? Colors.red
-                                : Colors.transparent,
+                                _selectedType == TransactionType.expense
+                                    ? Colors.red
+                                    : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -613,9 +787,9 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color:
-                              _selectedType == TransactionType.expense
-                                  ? Colors.white
-                                  : ThemeProvider.getTextColor(),
+                                  _selectedType == TransactionType.expense
+                                      ? Colors.white
+                                      : ThemeProvider.getTextColor(),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -662,7 +836,11 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                 decoration: InputDecoration(
                   labelText: 'Amount',
                   labelStyle: TextStyle(color: Colors.grey),
-                  prefixIcon: Icon(Icons.attach_money, color: Colors.grey, size: 20,),
+                  prefixIcon: Icon(
+                    Icons.attach_money,
+                    color: Colors.grey,
+                    size: 20,
+                  ),
                   // prefixText: 'so\'m',
                   // hintText: "so'm",
                   enabledBorder: OutlineInputBorder(
@@ -686,6 +864,26 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                   return null;
                 },
               ),
+              SizedBox(height: 12),
+
+              // Currency Selector for Input
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(label: Text('USD'), value: 'USD'),
+                      ButtonSegment(label: Text("so'm"), value: 'UZS'),
+                    ],
+                    selected: {_inputCurrency},
+                    onSelectionChanged: (Set<String> newSelection) {
+                      setState(() {
+                        _inputCurrency = newSelection.first;
+                      });
+                    },
+                  ),
+                ],
+              ),
               SizedBox(height: 16),
 
               // Category Dropdown
@@ -707,23 +905,22 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                   ),
                 ),
                 items:
-                categories.map((category) {
-                  return DropdownMenuItem<String>(
-                    value: category.id,
-                    child: Row(
-                      children: [
-                        
-                        Icon(
-                          category.icon,
-                          color: category.color,
-                          size: 20,
+                    categories.map((category) {
+                      return DropdownMenuItem<String>(
+                        value: category.id,
+                        child: Row(
+                          children: [
+                            Icon(
+                              category.icon,
+                              color: category.color,
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Text(category.name),
+                          ],
                         ),
-                        SizedBox(width: 12),
-                        Text(category.name),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
                 onChanged: (value) {
                   setState(() {
                     _selectedCategoryId = value;
@@ -745,7 +942,7 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
-                      'Cancel',
+                      AppLocalizations.of(context).t('cancel'),
                       style: TextStyle(color: Colors.grey[400]),
                     ),
                   ),
@@ -753,6 +950,20 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                   ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
+                        if (_selectedCategoryId == null ||
+                            _selectedCategoryId!.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                AppLocalizations.of(
+                                  context,
+                                ).t('please_select_category'),
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
                         final transaction = Transaction(
                           id: DateTime.now().millisecondsSinceEpoch.toString(),
                           title: _titleController.text,
@@ -760,6 +971,7 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                           amount: double.parse(_amountController.text),
                           date: _selectedDate,
                           type: _selectedType,
+                          inputCurrency: _inputCurrency,
                         );
 
                         widget.onAddTransaction(transaction);
@@ -773,7 +985,7 @@ class _AddTransactionDialogeState extends State<AddTransactionDialog> {
                       ),
                     ),
                     child: Text(
-                      'Add Transaction',
+                      AppLocalizations.of(context).t('add_transaction'),
                       style: TextStyle(color: Colors.white),
                     ),
                   ),

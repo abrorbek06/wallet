@@ -1,4 +1,6 @@
 import 'package:app/models/themes.dart';
+import 'package:app/l10n/app_localizations.dart';
+import 'package:app/services/currency_service.dart';
 import 'package:flutter/material.dart';
 import '../services/voice_input_service.dart';
 
@@ -34,7 +36,7 @@ class TransactionPreviewWidget extends StatelessWidget {
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Transaction Preview',
+                  AppLocalizations.of(context).t('transaction_preview'),
                   style: TextStyle(
                     color: ThemeProvider.getTextColor(),
                     fontSize: 20,
@@ -44,10 +46,7 @@ class TransactionPreviewWidget extends StatelessWidget {
               ),
               IconButton(
                 onPressed: onCancel,
-                icon: Icon(
-                  Icons.close,
-                  color: Colors.grey,
-                ),
+                icon: Icon(Icons.close, color: Colors.grey),
               ),
             ],
           ),
@@ -59,17 +58,25 @@ class TransactionPreviewWidget extends StatelessWidget {
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: transactionData.type == 'income'
-                    ? [Colors.green.withOpacity(0.1), Colors.green.withOpacity(0.05)]
-                    : [Colors.red.withOpacity(0.1), Colors.red.withOpacity(0.05)],
+                colors:
+                    transactionData.type == 'income'
+                        ? [
+                          Colors.green.withOpacity(0.1),
+                          Colors.green.withOpacity(0.05),
+                        ]
+                        : [
+                          Colors.red.withOpacity(0.1),
+                          Colors.red.withOpacity(0.05),
+                        ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: transactionData.type == 'income'
-                    ? Colors.green.withOpacity(0.3)
-                    : Colors.red.withOpacity(0.3),
+                color:
+                    transactionData.type == 'income'
+                        ? Colors.green.withOpacity(0.3)
+                        : Colors.red.withOpacity(0.3),
                 width: 1,
               ),
               boxShadow: [
@@ -87,13 +94,17 @@ class TransactionPreviewWidget extends StatelessWidget {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: transactionData.type == 'income'
-                        ? Colors.green
-                        : Colors.red,
+                    color:
+                        transactionData.type == 'income'
+                            ? Colors.green
+                            : Colors.red,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    transactionData.type.toUpperCase(),
+                    (transactionData.type == 'income'
+                            ? AppLocalizations.of(context).t('income')
+                            : AppLocalizations.of(context).t('expense'))
+                        .toUpperCase(),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 12,
@@ -108,13 +119,16 @@ class TransactionPreviewWidget extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.attach_money,
-                      color: transactionData.type == 'income'
-                          ? Colors.green
-                          : Colors.red,
+                      color:
+                          transactionData.type == 'income'
+                              ? Colors.green
+                              : Colors.red,
                       size: 28,
                     ),
                     Text(
-                      '\$${transactionData.amount.toStringAsFixed(2)}',
+                      CurrencyService.instance.formatAmount(
+                        transactionData.amount,
+                      ),
                       style: TextStyle(
                         color: ThemeProvider.getTextColor(),
                         fontSize: 32,
@@ -128,11 +142,7 @@ class TransactionPreviewWidget extends StatelessWidget {
                 // Description
                 Row(
                   children: [
-                    Icon(
-                      Icons.description,
-                      color: Colors.grey,
-                      size: 20,
-                    ),
+                    Icon(Icons.description, color: Colors.grey, size: 20),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -150,19 +160,20 @@ class TransactionPreviewWidget extends StatelessWidget {
                 // Category - showing $200
                 Row(
                   children: [
-                    Icon(
-                      Icons.category,
-                      color: Colors.grey,
-                      size: 20,
-                    ),
+                    Icon(Icons.category, color: Colors.grey, size: 20),
                     SizedBox(width: 8),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: ThemeProvider.getPrimaryColor().withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: ThemeProvider.getPrimaryColor().withOpacity(0.3),
+                          color: ThemeProvider.getPrimaryColor().withOpacity(
+                            0.3,
+                          ),
                         ),
                       ),
                       child: Text(
@@ -195,7 +206,7 @@ class TransactionPreviewWidget extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: Text(
-                    'Edit',
+                    AppLocalizations.of(context).t('edit'),
                     style: TextStyle(
                       color: Colors.grey,
                       fontWeight: FontWeight.w600,
@@ -216,7 +227,7 @@ class TransactionPreviewWidget extends StatelessWidget {
                     padding: EdgeInsets.symmetric(vertical: 12),
                   ),
                   child: Text(
-                    'Add Transaction',
+                    AppLocalizations.of(context).t('add_transaction'),
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

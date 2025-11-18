@@ -1,0 +1,74 @@
+[
+  {
+    "id": "a5eb3a65-3508-43a4-a93b-552984a71e60",
+    "title": "oylik",
+    "amount": 400.0,
+    "inputCurrency": "USD",
+    "type": "income",
+    "date": "2025-11-16T21:54:55.975989",
+    "isSettled": true
+  },
+  {
+    "id": "cdb03326-a999-4c66-a0aa-51bf1f6e20b4",
+    "title": "Oylik",
+    "amount": 500.0,
+    "inputCurrency": "USD",
+    "type": "income",
+    "date": "2025-11-16T21:56:19.532799",
+    "isSettled": true
+  },
+  {
+    "id": "00e6e0f7-9a4d-4815-aa0a-6c964afd318e",
+    "title": "Oylik",
+    "amount": 300.0,
+    "inputCurrency": "USD",
+    "type": "income",
+    "date": "2025-11-16T21:58:42.574586",
+    "isSettled": true
+  },
+  {
+    "id": "e08c7d49-413c-4b33-abf3-afa81e8e1c4b",
+    "title": "gg",
+    "amount": 688.0,
+    "inputCurrency": "USD",
+    "type": "income",
+    "date": "2025-11-16T22:08:32.713959",
+    "isSettled": true
+  },
+  {
+    "id": "98ed5660-483c-4734-9c49-a32462ea9c4d",
+    "title": "kjhg",
+    "amount": 556.0,
+    "inputCurrency": "USD",
+    "type": "income",
+    "date": "2025-11-16T22:11:52.803185",
+    "isSettled": true
+  },
+  {
+    "id": "a4506e39-cf48-4deb-b553-cb881a2d6964",
+    "title": "hf",
+    "amount": 65.0,
+    "inputCurrency": "USD",
+    "type": "income",
+    "date": "2025-11-16T22:12:55.680981",
+    "isSettled": true
+  },
+  {
+    "id": "f7cb77bc-d1d0-4897-bb92-aa6ac4bb13a3",
+    "title": "rh",
+    "amount": 54.0,
+    "inputCurrency": "USD",
+    "type": "income",
+    "date": "2025-11-16T22:27:43.987937+00:00",
+    "isSettled": true
+  },
+  {
+    "id": "3693f9a4-506b-4e97-b190-7d4c0aac72d3",
+    "title": "jghj",
+    "amount": 7654.0,
+    "inputCurrency": "USD",
+    "type": "income",
+    "date": "2025-11-16T22:29:09.444585+00:00",
+    "isSettled": true
+  }
+]

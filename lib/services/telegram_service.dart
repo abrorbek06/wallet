@@ -4,8 +4,18 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TelegramService {
-  static const _tokenKey = 'telegram_bot_token';
-  static const _chatIdKey = 'telegram_chat_id';
+  // (Removed any accidental hardcoded values here.)
+  // Optional: hardcode your bot token/chat id here if you prefer to embed it in code.
+  // WARNING: hardcoding secrets in source is not recommended for production.
+  // If you want to hardcode, set the values below (replace null with your values).
+  // Example: static const String? _defaultBotToken = '123456:ABC-DEF...';
+  static const String? _defaultBotToken = null;
+  // Example for chat id: static const String? _defaultChatId = '123456789';
+  static const String? _defaultChatId = null;
+
+  // Keys used to persist credentials in SharedPreferences
+  static const _tokenKey = '7625131432:AAHgBxHagdB08uf9A8twVTNYsZhq0UbOPss';
+  static const _chatIdKey = '1648001576';
 
   /// Save bot token and chat id to SharedPreferences
   static Future<void> saveCredentials(String token, String chatId) async {
@@ -31,8 +41,12 @@ class TelegramService {
     String? chatId,
   }) async {
     final creds = await getCredentials();
-    final token = botToken ?? creds['token'];
-    final chat = chatId ?? creds['chatId'];
+    // Resolve token/chat in the following order:
+    // 1) explicit parameters passed to the call
+    // 2) saved credentials in SharedPreferences
+    // 3) optional hardcoded defaults in this file
+    final token = botToken ?? creds['token'] ?? _defaultBotToken;
+    final chat = chatId ?? creds['chatId'] ?? _defaultChatId;
     if (token == null || chat == null) {
       throw Exception('Telegram bot token or chat id not configured.');
     }

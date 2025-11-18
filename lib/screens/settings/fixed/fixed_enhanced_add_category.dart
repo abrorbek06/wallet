@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/models.dart';
 import '../../../models/themes.dart';
+import '../../../l10n/app_localizations.dart';
 
 class AddCategoryDialog extends StatefulWidget {
   final Function(Category) onAddCategory;
@@ -23,17 +24,45 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
   Color _selectedColor = Colors.blue;
 
   final List<IconData> _availableIcons = [
-    Icons.category, Icons.work, Icons.business, Icons.computer, Icons.trending_up,
-    Icons.restaurant, Icons.directions_car, Icons.shopping_bag, Icons.receipt,
-    Icons.movie, Icons.local_hospital, Icons.school, Icons.home, Icons.flight,
-    Icons.fitness_center, Icons.pets, Icons.music_note, Icons.book,
-    Icons.sports_esports, Icons.coffee, Icons.local_gas_station, Icons.phone,
+    Icons.category,
+    Icons.work,
+    Icons.business,
+    Icons.computer,
+    Icons.trending_up,
+    Icons.restaurant,
+    Icons.directions_car,
+    Icons.shopping_bag,
+    Icons.receipt,
+    Icons.movie,
+    Icons.local_hospital,
+    Icons.school,
+    Icons.home,
+    Icons.flight,
+    Icons.fitness_center,
+    Icons.pets,
+    Icons.music_note,
+    Icons.book,
+    Icons.sports_esports,
+    Icons.coffee,
+    Icons.local_gas_station,
+    Icons.phone,
   ];
 
   final List<Color> _availableColors = [
-    Colors.blue, Colors.green, Colors.red, Colors.purple, Colors.orange,
-    Colors.pink, Colors.teal, Colors.indigo, Colors.amber, Colors.cyan,
-    Colors.lime, Colors.deepOrange, Colors.brown, Colors.blueGrey,
+    Colors.blue,
+    Colors.green,
+    Colors.red,
+    Colors.purple,
+    Colors.orange,
+    Colors.pink,
+    Colors.teal,
+    Colors.indigo,
+    Colors.amber,
+    Colors.cyan,
+    Colors.lime,
+    Colors.deepOrange,
+    Colors.brown,
+    Colors.blueGrey,
   ];
 
   @override
@@ -65,7 +94,13 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Add ${widget.isIncome ? 'Income' : 'Expense'} Category',
+                      widget.isIncome
+                          ? AppLocalizations.of(
+                            context,
+                          ).t('add_income_category')
+                          : AppLocalizations.of(
+                            context,
+                          ).t('add_expense_category'),
                       style: TextStyle(
                         color: ThemeProvider.getTextColor(),
                         fontWeight: FontWeight.w600,
@@ -95,7 +130,9 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                       decoration: BoxDecoration(
                         color: _selectedColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _selectedColor.withOpacity(0.3)),
+                        border: Border.all(
+                          color: _selectedColor.withOpacity(0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -105,12 +142,20 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                               color: _selectedColor.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Icon(_selectedIcon, color: _selectedColor, size: 24),
+                            child: Icon(
+                              _selectedIcon,
+                              color: _selectedColor,
+                              size: 24,
+                            ),
                           ),
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              _nameController.text.isEmpty ? 'Category Preview' : _nameController.text,
+                              _nameController.text.isEmpty
+                                  ? AppLocalizations.of(
+                                    context,
+                                  ).t('category_preview')
+                                  : _nameController.text,
                               style: TextStyle(
                                 color: ThemeProvider.getTextColor(),
                                 fontSize: 16,
@@ -129,17 +174,25 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                       style: TextStyle(color: ThemeProvider.getTextColor()),
                       onChanged: (value) => setState(() {}),
                       decoration: InputDecoration(
-                        labelText: 'Category Name',
+                        labelText: AppLocalizations.of(
+                          context,
+                        ).t('category_name'),
                         labelStyle: TextStyle(color: Colors.grey),
                         prefixIcon: Icon(Icons.label, color: Colors.grey),
-                        hintText: 'Enter category name',
+                        hintText: AppLocalizations.of(
+                          context,
+                        ).t('enter_category_name'),
                         hintStyle: TextStyle(color: Colors.grey[400]),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                          borderSide: BorderSide(
+                            color: Colors.grey.withOpacity(0.3),
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: ThemeProvider.getPrimaryColor()),
+                          borderSide: BorderSide(
+                            color: ThemeProvider.getPrimaryColor(),
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
@@ -148,7 +201,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
 
                     // Icon Selection
                     Text(
-                      'Select Icon',
+                      AppLocalizations.of(context).t('select_icon'),
                       style: TextStyle(
                         color: ThemeProvider.getTextColor(),
                         fontSize: 16,
@@ -170,27 +223,39 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                           crossAxisCount: 6,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
-                          children: _availableIcons.map((icon) {
-                            final isSelected = icon == _selectedIcon;
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedIcon = icon),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: isSelected ? _selectedColor.withOpacity(0.2) : Colors.grey.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: isSelected ? _selectedColor : Colors.transparent,
-                                    width: 2,
+                          children:
+                              _availableIcons.map((icon) {
+                                final isSelected = icon == _selectedIcon;
+                                return GestureDetector(
+                                  onTap:
+                                      () =>
+                                          setState(() => _selectedIcon = icon),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isSelected
+                                              ? _selectedColor.withOpacity(0.2)
+                                              : Colors.grey.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color:
+                                            isSelected
+                                                ? _selectedColor
+                                                : Colors.transparent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      icon,
+                                      color:
+                                          isSelected
+                                              ? _selectedColor
+                                              : Colors.grey[400],
+                                      size: 20,
+                                    ),
                                   ),
-                                ),
-                                child: Icon(
-                                  icon,
-                                  color: isSelected ? _selectedColor : Colors.grey[400],
-                                  size: 20,
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                                );
+                              }).toList(),
                         ),
                       ),
                     ),
@@ -198,7 +263,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
 
                     // Color Selection
                     Text(
-                      'Select Color',
+                      AppLocalizations.of(context).t('select_color'),
                       style: TextStyle(
                         color: ThemeProvider.getTextColor(),
                         fontSize: 16,
@@ -220,30 +285,47 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                           crossAxisCount: 7,
                           crossAxisSpacing: 8,
                           mainAxisSpacing: 8,
-                          children: _availableColors.map((color) {
-                            final isSelected = color == _selectedColor;
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedColor = color),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected ? Colors.white : Colors.transparent,
-                                    width: 3,
-                                  ),
-                                  boxShadow: isSelected ? [
-                                    BoxShadow(
-                                      color: color.withOpacity(0.5),
-                                      blurRadius: 8,
-                                      spreadRadius: 2,
+                          children:
+                              _availableColors.map((color) {
+                                final isSelected = color == _selectedColor;
+                                return GestureDetector(
+                                  onTap:
+                                      () => setState(
+                                        () => _selectedColor = color,
+                                      ),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color:
+                                            isSelected
+                                                ? Colors.white
+                                                : Colors.transparent,
+                                        width: 3,
+                                      ),
+                                      boxShadow:
+                                          isSelected
+                                              ? [
+                                                BoxShadow(
+                                                  color: color.withOpacity(0.5),
+                                                  blurRadius: 8,
+                                                  spreadRadius: 2,
+                                                ),
+                                              ]
+                                              : null,
                                     ),
-                                  ] : null,
-                                ),
-                                child: isSelected ? Icon(Icons.check, color: Colors.white, size: 16) : null,
-                              ),
-                            );
-                          }).toList(),
+                                    child:
+                                        isSelected
+                                            ? Icon(
+                                              Icons.check,
+                                              color: Colors.white,
+                                              size: 16,
+                                            )
+                                            : null,
+                                  ),
+                                );
+                              }).toList(),
                         ),
                       ),
                     ),
@@ -261,7 +343,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
-                      'Cancel',
+                      AppLocalizations.of(context).t('cancel'),
                       style: TextStyle(color: Colors.grey[400]),
                     ),
                   ),
@@ -282,7 +364,11 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Please enter a category name'),
+                            content: Text(
+                              AppLocalizations.of(
+                                context,
+                              ).t('please_enter_category_name'),
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );
@@ -295,7 +381,7 @@ class _AddCategoryDialogState extends State<AddCategoryDialog> {
                       ),
                     ),
                     child: Text(
-                      'Add Category',
+                      AppLocalizations.of(context).t('add_category'),
                       style: TextStyle(color: Colors.white),
                     ),
                   ),

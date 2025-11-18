@@ -1,39 +1,46 @@
 import 'package:app/models/themes.dart';
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 
 void showAboutAppDialog(BuildContext context) {
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      backgroundColor: ThemeProvider.getCardColor(),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text(
-        'About Finance Pro',
-        style: TextStyle(fontWeight: FontWeight.w600),
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
-            'Finance Pro is a comprehensive expense tracking app designed to help you manage your finances effectively.',
-            style: TextStyle(fontSize: 14),
+    builder:
+        (context) => AlertDialog(
+          backgroundColor: ThemeProvider.getCardColor(),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          SizedBox(height: 16),
-          Text('Features:', style: TextStyle(fontWeight: FontWeight.w600)),
-          SizedBox(height: 8),
-          Text(
-            '• Track income and expenses\n• Categorize transactions\n• Visual charts and statistics\n• Multiple themes\n• Card management\n• Budget tracking',
-            style: TextStyle(fontSize: 14),
+          title: Text(
+            AppLocalizations.of(context).t('about_title'),
+            style: TextStyle(fontWeight: FontWeight.w600),
           ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Close'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppLocalizations.of(context).t('about_description'),
+                style: TextStyle(fontSize: 14),
+              ),
+              SizedBox(height: 16),
+              Text(
+                AppLocalizations.of(context).t('features_header'),
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 8),
+              Text(
+                AppLocalizations.of(context).t('features_list'),
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(AppLocalizations.of(context).t('close')),
+            ),
+          ],
         ),
-      ],
-    ),
   );
 }

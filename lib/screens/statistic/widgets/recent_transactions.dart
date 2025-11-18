@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app/models/models.dart';
 import 'package:app/models/themes.dart';
 import 'transaction_item.dart';
+import '../../../l10n/app_localizations.dart';
 
 class RecentTransactionsSummary extends StatelessWidget {
   final List<Transaction> transactions;
@@ -23,7 +24,7 @@ class RecentTransactionsSummary extends StatelessWidget {
     final recentTransactions = sorted.take(5).toList();
 
     if (recentTransactions.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(context);
     }
 
     return Container(
@@ -35,18 +36,18 @@ class RecentTransactionsSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
+          _buildHeader(context),
           SizedBox(height: 16),
-          _buildTransactionCountIndicator(recentTransactions),
+          _buildTransactionCountIndicator(context, recentTransactions),
           SizedBox(height: 16),
           ..._buildTransactionItems(recentTransactions),
-          _buildShowMoreButton(),
+          _buildShowMoreButton(context),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -58,12 +59,12 @@ class RecentTransactionsSummary extends StatelessWidget {
           Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[400]),
           SizedBox(height: 16),
           Text(
-            'No recent transactions',
+            AppLocalizations.of(context).t('no_spending_today'),
             style: TextStyle(color: Colors.grey[400], fontSize: 16),
           ),
           SizedBox(height: 12),
           Text(
-            'Add some transactions to see them here',
+            AppLocalizations.of(context).t('no_transactions_prompt'),
             style: TextStyle(color: Colors.grey[500], fontSize: 14),
             textAlign: TextAlign.center,
           ),
@@ -72,7 +73,7 @@ class RecentTransactionsSummary extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -86,7 +87,7 @@ class RecentTransactionsSummary extends StatelessWidget {
               ),
               SizedBox(width: 12),
               Text(
-                'Recent Transactions',
+                AppLocalizations.of(context).t('recent_transactions'),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 18,
@@ -99,7 +100,7 @@ class RecentTransactionsSummary extends StatelessWidget {
         TextButton.icon(
           onPressed: showAllTransactions,
           // icon: Icon(Icons.arrow_forward, size: 16),
-          label: Text('View All'),
+          label: Text(AppLocalizations.of(context).t('view_all')),
           style: TextButton.styleFrom(
             foregroundColor: ThemeProvider.getPrimaryColor(),
           ),
@@ -108,7 +109,10 @@ class RecentTransactionsSummary extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionCountIndicator(List<Transaction> recentTransactions) {
+  Widget _buildTransactionCountIndicator(
+    BuildContext context,
+    List<Transaction> recentTransactions,
+  ) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -116,7 +120,10 @@ class RecentTransactionsSummary extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        'Showing ${recentTransactions.length} of ${allTransactions.length} transactions',
+        AppLocalizations.of(context)
+            .t('showing_transactions')
+            .replaceFirst('{shown}', recentTransactions.length.toString())
+            .replaceFirst('{total}', allTransactions.length.toString()),
         style: TextStyle(
           color: ThemeProvider.getPrimaryColor(),
           fontSize: 12,
@@ -138,7 +145,7 @@ class RecentTransactionsSummary extends StatelessWidget {
     }).toList();
   }
 
-  Widget _buildShowMoreButton() {
+  Widget _buildShowMoreButton(BuildContext context) {
     if (allTransactions.length <= 5) return SizedBox.shrink();
 
     return Container(
@@ -147,7 +154,11 @@ class RecentTransactionsSummary extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: showAllTransactions,
         icon: Icon(Icons.add, size: 18),
-        label: Text('Show ${allTransactions.length - 5} More Transactions'),
+        label: Text(
+          AppLocalizations.of(context)
+              .t('show_more_transactions')
+              .replaceFirst('{n}', (allTransactions.length - 5).toString()),
+        ),
         style: OutlinedButton.styleFrom(
           foregroundColor: ThemeProvider.getPrimaryColor(),
           side: BorderSide(

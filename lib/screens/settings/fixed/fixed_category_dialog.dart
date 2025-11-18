@@ -3,6 +3,7 @@ import 'package:app/models/models.dart';
 import 'package:flutter/material.dart';
 
 import '../../../models/themes.dart';
+import '../../../l10n/app_localizations.dart';
 import 'fixed_enhanced_add_category.dart';
 
 class CategoryManagementDialog extends StatefulWidget {
@@ -66,7 +67,7 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Category Management',
+                      AppLocalizations.of(context).t('manage_categories'),
                       style: TextStyle(
                         color: ThemeProvider.getTextColor(),
                         fontSize: 20,
@@ -95,10 +96,13 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
                 unselectedLabelColor: Colors.grey[400],
                 indicatorColor: ThemeProvider.getPrimaryColor(),
                 tabs: [
-                  Tab(icon: Icon(Icons.add_circle), text: 'Income Categories'),
+                  Tab(
+                    icon: Icon(Icons.add_circle),
+                    text: AppLocalizations.of(context).t('income_categories'),
+                  ),
                   Tab(
                     icon: Icon(Icons.remove_circle),
-                    text: 'Expense Categories',
+                    text: AppLocalizations.of(context).t('expense_categories'),
                   ),
                 ],
               ),
@@ -128,7 +132,7 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
                       ),
                   icon: Icon(Icons.add, color: Colors.white),
                   label: Text(
-                    'Add New Category',
+                    AppLocalizations.of(context).t('add_new_category'),
                     style: TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -187,7 +191,9 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
                 onPressed:
                     () =>
                         _showDeleteCategoryDialog(context, category, isIncome),
-                tooltip: 'Delete Category',
+                tooltip: AppLocalizations.of(
+                  context,
+                ).t('delete_category_tooltip'),
               ),
             ],
           ),
@@ -207,7 +213,9 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Category "${category.name}" added successfully!',
+                    AppLocalizations.of(
+                      context,
+                    ).t('category_added').replaceAll('{name}', category.name),
                   ),
                   backgroundColor: Colors.green,
                   duration: Duration(seconds: 2),
@@ -233,7 +241,7 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
-              'Delete Category',
+              AppLocalizations.of(context).t('delete_category_dialog_title'),
               style: TextStyle(
                 color: ThemeProvider.getTextColor(),
                 fontWeight: FontWeight.w600,
@@ -249,7 +257,9 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
                 ),
                 SizedBox(height: 16),
                 Text(
-                  'Are you sure you want to delete "${category.name}" category?',
+                  AppLocalizations.of(context)
+                      .t('delete_category_dialog_content')
+                      .replaceAll('{name}', category.name),
                   style: TextStyle(
                     color: ThemeProvider.getTextColor(),
                     fontSize: 16,
@@ -258,7 +268,7 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'This action cannot be undone.',
+                  AppLocalizations.of(context).t('cannot_undo_action'),
                   style: TextStyle(color: Colors.grey[400], fontSize: 14),
                 ),
               ],
@@ -267,7 +277,7 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
-                  'Cancel',
+                  AppLocalizations.of(context).t('cancel'),
                   style: TextStyle(color: Colors.grey[400]),
                 ),
               ),
@@ -279,7 +289,9 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                        'Category "${category.name}" deleted successfully',
+                        AppLocalizations.of(context)
+                            .t('category_deleted_success')
+                            .replaceAll('{name}', category.name),
                       ),
                       backgroundColor: Colors.red,
                     ),
@@ -291,7 +303,10 @@ class _CategoryManagementDialogState extends State<CategoryManagementDialog>
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: Text('Delete', style: TextStyle(color: Colors.white)),
+                child: Text(
+                  AppLocalizations.of(context).t('delete'),
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),

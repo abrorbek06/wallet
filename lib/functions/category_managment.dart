@@ -86,6 +86,13 @@ class CategoryManager {
     ),
     Category(
       id: '12',
+      name: 'Mother',
+      icon: Icons.movie,
+      color: Colors.green,
+      type: 'expense',
+    ),
+    Category(
+      id: '13',
       name: 'Other',
       icon: Icons.movie,
       color: Colors.green,
@@ -215,6 +222,13 @@ class CategoryManager {
         name: 'Gift',
         icon: Icons.card_giftcard,
         color: Colors.pink,
+        type: 'income',
+      ),
+      Category(
+        id: '6',
+        name: 'Project',
+        icon: Icons.card_giftcard,
+        color: Colors.teal,
         type: 'income',
       ),
     ]);

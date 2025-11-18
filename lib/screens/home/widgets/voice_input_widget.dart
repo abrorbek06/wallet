@@ -1,5 +1,6 @@
 import 'package:app/models/themes.dart';
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/voice_input_service.dart';
 
@@ -24,11 +25,11 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
   final VoiceInputService _voiceService = VoiceInputService();
   late AnimationController _animationController;
   late AnimationController _pulseController;
-  
+
   bool _isInitialized = false;
   bool _isListening = false;
   String _currentText = '';
-  String _status = 'Initializing...';
+  String _status = '';
   TransactionData? _parsedTransaction;
   bool _isProcessing = false;
   PermissionStatus? _permissionStatus;
@@ -44,7 +45,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
       duration: Duration(milliseconds: 1000),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _initializeVoiceService();
   }
 
@@ -58,7 +59,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
 
   Future<void> _initializeVoiceService() async {
     setState(() {
-      _status = 'Checking permissions...';
+      _status = AppLocalizations.of(context).t('checking_permissions');
     });
 
     // Check permission status first
@@ -69,7 +70,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
 
     if (permissionStatus.isPermanentlyDenied) {
       setState(() {
-        _status = 'Microphone access permanently denied.\nPlease enable in Settings.';
+        _status = AppLocalizations.of(context).t('mic_perm_permanently_denied');
         _isInitialized = false;
       });
       return;
@@ -79,12 +80,16 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
     setState(() {
       _isInitialized = initialized;
       if (initialized) {
-        _status = 'Tap to start speaking';
+        _status = AppLocalizations.of(context).t('tap_to_start_speaking');
       } else {
         if (permissionStatus.isDenied) {
-          _status = 'Microphone permission required.\nTap to request permission.';
+          _status = AppLocalizations.of(
+            context,
+          ).t('mic_permission_required_request');
         } else {
-          _status = 'Voice recognition not available on this device.';
+          _status = AppLocalizations.of(
+            context,
+          ).t('voice_recognition_unavailable');
         }
       }
     });
@@ -104,26 +109,28 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
   void _showPermissionDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Microphone Permission Required'),
-        content: Text(
-          'This app needs microphone access to use voice input. '
-          'Please enable microphone permission in your device settings.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: Text(
+              AppLocalizations.of(context).t('microphone_permission'),
+            ),
+            content: Text(
+              AppLocalizations.of(context).t('microphone_permission_needed'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(AppLocalizations.of(context).t('cancel')),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  openAppSettings();
+                },
+                child: Text(AppLocalizations.of(context).t('open_settings')),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              openAppSettings();
-            },
-            child: Text('Open Settings'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -137,28 +144,28 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
       _voiceService.stopListening();
       setState(() {
         _isListening = false;
-        _status = 'Processing...';
+        _status = AppLocalizations.of(context).t('processing');
         _isProcessing = true;
       });
       _animationController.reverse();
-      
+
       if (_currentText.isNotEmpty) {
         await _processVoiceInput(_currentText);
       } else {
         setState(() {
           _isProcessing = false;
-          _status = 'No speech detected. Try again.';
+          _status = AppLocalizations.of(context).t('no_speech_detected');
         });
       }
     } else {
       setState(() {
         _currentText = '';
         _parsedTransaction = null;
-        _status = 'Listening... Speak now';
+        _status = AppLocalizations.of(context).t('listening_prompt');
         _isListening = true;
       });
       _animationController.forward();
-      
+
       await _voiceService.startListening(
         onResult: (text) {
           setState(() {
@@ -167,7 +174,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
         },
         onError: (error) {
           setState(() {
-            _status = 'Error: $error';
+            _status = '${AppLocalizations.of(context).t('error')} $error';
             _isListening = false;
             _isProcessing = false;
           });
@@ -179,14 +186,16 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
 
   Future<void> _processVoiceInput(String text) async {
     final transactionData = await _voiceService.processVoiceInput(text);
-    
+
     setState(() {
       _isProcessing = false;
       if (transactionData != null) {
         _parsedTransaction = transactionData;
-        _status = 'Transaction parsed successfully!';
+        _status = AppLocalizations.of(context).t('transaction_parsed_success');
       } else {
-        _status = 'Could not understand the transaction. Try again.';
+        _status = AppLocalizations.of(
+          context,
+        ).t('could_not_understand_transaction');
       }
     });
   }
@@ -195,11 +204,11 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
     if (_parsedTransaction == null) return;
 
     widget.onTransactionAdded(_parsedTransaction!);
-    
+
     // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Transaction added successfully!'),
+        content: Text(AppLocalizations.of(context).t('transaction_added')),
         backgroundColor: Colors.green,
       ),
     );
@@ -229,15 +238,11 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
                   icon: Icon(Icons.arrow_back, color: Colors.grey[400]),
                   onPressed: widget.onClose,
                 ),
-              Icon(
-                Icons.mic,
-                color: Colors.blue,
-                size: 24,
-              ),
+              Icon(Icons.mic, color: Colors.blue, size: 24),
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Voice Input',
+                  AppLocalizations.of(context).t('voice_input_title'),
                   style: TextStyle(
                     color: ThemeProvider.getTextColor(),
                     fontSize: 20,
@@ -265,9 +270,12 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
                   height: 120,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _isListening 
-                        ? Colors.red.withOpacity(0.1 + (_pulseController.value * 0.2))
-                        : Colors.blue.withOpacity(0.1),
+                    color:
+                        _isListening
+                            ? Colors.red.withOpacity(
+                              0.1 + (_pulseController.value * 0.2),
+                            )
+                            : Colors.blue.withOpacity(0.1),
                     border: Border.all(
                       color: _isListening ? Colors.red : Colors.blue,
                       width: 2,
@@ -297,7 +305,6 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
           SizedBox(height: 16),
 
           // ... existing code for current text, processing indicator, and parsed transaction preview ...
-
           SizedBox(height: 24),
 
           // Action Buttons
@@ -306,19 +313,22 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
               if (_parsedTransaction == null) ...[
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _isInitialized || _permissionStatus?.isDenied == true 
-                        ? _toggleListening 
-                        : null,
+                    onPressed:
+                        _isInitialized || _permissionStatus?.isDenied == true
+                            ? _toggleListening
+                            : null,
                     icon: Icon(
                       _isListening ? Icons.stop : Icons.mic,
                       color: Colors.white,
                     ),
                     label: Text(
-                      _isListening 
-                          ? 'Stop' 
-                          : _isInitialized 
-                              ? 'Start' 
-                              : 'Request Permission',
+                      _isListening
+                          ? AppLocalizations.of(context).t('stop')
+                          : _isInitialized
+                          ? AppLocalizations.of(context).t('start')
+                          : AppLocalizations.of(
+                            context,
+                          ).t('request_permission'),
                       style: TextStyle(color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -337,7 +347,9 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
                       setState(() {
                         _parsedTransaction = null;
                         _currentText = '';
-                        _status = 'Tap to start speaking';
+                        _status = AppLocalizations.of(
+                          context,
+                        ).t('tap_to_start_speaking');
                       });
                     },
                     style: OutlinedButton.styleFrom(
@@ -348,7 +360,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text('Try Again'),
+                    child: Text(AppLocalizations.of(context).t('try_again')),
                   ),
                 ),
                 SizedBox(width: 12),
@@ -363,7 +375,7 @@ class _VoiceInputWidgetState extends State<VoiceInputWidget>
                       ),
                     ),
                     child: Text(
-                      'Add Transaction',
+                      AppLocalizations.of(context).t('add_transaction'),
                       style: TextStyle(color: Colors.white),
                     ),
                   ),

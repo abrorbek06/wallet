@@ -16,6 +16,9 @@ import '../../models/models.dart';
 import '../../models/themes.dart';
 import '../settings/settings_screen.dart';
 import '../../l10n/app_localizations.dart';
+import 'package:app/services/currency_service.dart';
+import 'package:app/services/exchange_rate_service.dart';
+import '../../services/telegram_sync_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final void Function(Locale)? onLocaleChanged;
@@ -32,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Transaction> transactions = [];
   double? _dailyLimit;
+  String _dailyLimitCurrency = 'USD';
 
   Future<void> saveTransactions(List<Transaction> transactions) async {
     final prefs = await SharedPreferences.getInstance();
@@ -47,13 +51,32 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       transactions = loaded;
     });
+    // Optionally fetch transactions from Telegram bot to keep in sync
+    () async {
+      final auto = await loadTelegramAutoSync();
+      if (!auto) return;
+      final botUrl = await loadTelegramBotUrl();
+      final sync = TelegramSyncService(baseUrl: botUrl);
+      final added = await sync.fetchAndMergeTransactions();
+      if (added > 0) {
+        // Reload transactions after merge
+        final refreshed = await loadTransactions();
+        setState(() {
+          transactions = refreshed;
+        });
+      }
+    }();
+    // Refresh exchange rate when loading transactions
+    ExchangeRateService.fetchExchangeRate();
 
     // Process scheduled transactions and apply notifications
     await _processScheduledTransactions();
     // Load daily spending limit (if any)
     final limit = await loadDailyLimit();
+    final limitCurrency = await loadDailyLimitCurrency();
     setState(() {
       _dailyLimit = limit;
+      _dailyLimitCurrency = limitCurrency;
     });
     // If daily limit exceeded and not warned today, show a SnackBar
     if (_dailyLimit != null) {
@@ -70,9 +93,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 t.isSettled &&
                 !t.isLoan;
           })
-          .fold(0.0, (sum, t) => sum + t.amount);
+          .fold(0.0, (sum, t) => sum + _convertTransactionAmount(t));
 
-      if (todayExpenses > _dailyLimit!) {
+      final displayCurrencyStr =
+          CurrencyService.instance.currency == Currency.USD ? 'USD' : 'UZS';
+      final dailyLimitConverted = ExchangeRateService.convert(
+        _dailyLimit!,
+        _dailyLimitCurrency,
+        displayCurrencyStr,
+      );
+
+      if (todayExpenses > dailyLimitConverted) {
         final lastWarn = await loadDailyLimitWarnDate();
         final todayIso = DateTime.now().toIso8601String().substring(0, 10);
         if (lastWarn != todayIso) {
@@ -80,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('You have exceeded your daily spending limit.'),
+                content: Text(AppLocalizations.of(context).t('overspent')),
                 backgroundColor: Colors.red,
               ),
             );
@@ -101,6 +132,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadSampleData() {
     // Add some sample transactions for testing
     transactions = [];
+  }
+
+  /// Convert transaction amount from its input currency to display currency
+  double _convertTransactionAmount(Transaction t) {
+    final displayCurrencyStr =
+        CurrencyService.instance.currency == Currency.USD ? 'USD' : 'UZS';
+    return ExchangeRateService.convert(
+      t.amount,
+      t.inputCurrency,
+      displayCurrencyStr,
+    );
   }
 
   @override
@@ -154,14 +196,23 @@ class _HomeScreenState extends State<HomeScreen> {
               t.isSettled &&
               !t.isLoan;
         })
-        .fold(0.0, (sum, t) => sum + t.amount);
+        .fold(0.0, (sum, t) => sum + _convertTransactionAmount(t));
 
     Widget dailyLimitBar() {
       final limit = _dailyLimit;
       if (limit == null) return SizedBox.shrink();
+      final displayCurrencyStr =
+          CurrencyService.instance.currency == Currency.USD ? 'USD' : 'UZS';
+      final dailyLimitConverted = ExchangeRateService.convert(
+        limit,
+        _dailyLimitCurrency,
+        displayCurrencyStr,
+      );
       final progress =
-          (limit > 0) ? (todayExpenses / limit).clamp(0.0, 1.0) : 0.0;
-      final exceeded = todayExpenses > limit;
+          (dailyLimitConverted > 0)
+              ? (todayExpenses / dailyLimitConverted).clamp(0.0, 1.0)
+              : 0.0;
+      final exceeded = todayExpenses > dailyLimitConverted;
       return Container(
         color: ThemeProvider.getCardColor(),
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -171,13 +222,30 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Today: \$${todayExpenses.toStringAsFixed(2)} / \$${limit.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color:
-                          exceeded ? Colors.red : ThemeProvider.getTextColor(),
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final spent = CurrencyService.instance.formatAmount(
+                        todayExpenses,
+                      );
+                      final lim = CurrencyService.instance.formatAmount(
+                        dailyLimitConverted,
+                      );
+                      final msg = AppLocalizations.of(context)
+                          .t('today_summary')
+                          .replaceFirst('{spent}', spent)
+                          .replaceFirst('{limit}', lim);
+
+                      return Text(
+                        msg,
+                        style: TextStyle(
+                          color:
+                              exceeded
+                                  ? Colors.red
+                                  : ThemeProvider.getTextColor(),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    },
                   ),
                   SizedBox(height: 6),
                   LinearProgressIndicator(
@@ -225,18 +293,21 @@ class _HomeScreenState extends State<HomeScreen> {
             unselectedItemColor: Colors.grey[400],
             selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
             items: [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: AppLocalizations.of(context).t('home'),
+              ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.calendar_today),
-                label: 'Daily',
+                label: AppLocalizations.of(context).t('daily'),
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.bar_chart),
-                label: 'Statistics',
+                label: AppLocalizations.of(context).t('statistics'),
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.settings),
-                label: 'Settings',
+                label: AppLocalizations.of(context).t('settings'),
               ),
             ],
           ),
@@ -259,13 +330,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final confirmedTransactions =
         transactions.where((t) => t.isSettled).toList();
 
+    final displayCurrencyStr =
+        CurrencyService.instance.currency == Currency.USD ? 'USD' : 'UZS';
+
+    double convertAmount(Transaction t) {
+      return ExchangeRateService.convert(
+        t.amount,
+        t.inputCurrency,
+        displayCurrencyStr,
+      );
+    }
+
     final totalIncome = confirmedTransactions
         .where((t) => t.type == TransactionType.income)
-        .fold(0.0, (sum, t) => sum + t.amount);
+        .fold(0.0, (sum, t) => sum + convertAmount(t));
 
     final totalExpense = confirmedTransactions
         .where((t) => t.type == TransactionType.expense)
-        .fold(0.0, (sum, t) => sum + t.amount);
+        .fold(0.0, (sum, t) => sum + convertAmount(t));
 
     final balance = totalIncome - totalExpense;
 
@@ -320,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Current Balance',
+                        AppLocalizations.of(context).t('current_balance'),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
                           fontSize: 16,
@@ -328,11 +410,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       SizedBox(height: 8),
                       Text(
-                        "\$${balance.toStringAsFixed(2)}",
+                        CurrencyService.instance.formatAmount(
+                          balance,
+                          inputCurrency: displayCurrencyStr,
+                        ),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize:
-                              balance.toStringAsFixed(2).length >= 9 ? 30 : 36,
+                              CurrencyService.instance
+                                          .formatAmount(
+                                            balance,
+                                            inputCurrency: displayCurrencyStr,
+                                          )
+                                          .length >=
+                                      9
+                                  ? 30
+                                  : 36,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -352,7 +445,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     SizedBox(width: 4),
                                     Text(
-                                      'Income',
+                                      AppLocalizations.of(context).t('income'),
                                       style: TextStyle(
                                         color: Colors.white.withOpacity(0.8),
                                         fontSize: 14,
@@ -361,7 +454,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                                 Text(
-                                  '\$${totalIncome.toStringAsFixed(2)}',
+                                  CurrencyService.instance.formatAmount(
+                                    totalIncome,
+                                    inputCurrency: displayCurrencyStr,
+                                  ),
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -385,7 +481,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                     SizedBox(width: 4),
                                     Text(
-                                      'Expenses',
+                                      AppLocalizations.of(
+                                        context,
+                                      ).t('expenses'),
                                       style: TextStyle(
                                         color: Colors.white.withOpacity(0.8),
                                         fontSize: 14,
@@ -394,7 +492,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                                 Text(
-                                  '\$${totalExpense.toStringAsFixed(2)}',
+                                  CurrencyService.instance.formatAmount(
+                                    totalExpense,
+                                    inputCurrency: displayCurrencyStr,
+                                  ),
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -471,7 +572,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _currentIndex = 1; // Navigate to Statistics
                   });
                 },
-                child: Text(AppLocalizations.of(context).t('previous_days')),
+                child: Text(AppLocalizations.of(context).t('view_all')),
               ),
             ],
           ),
@@ -523,18 +624,18 @@ class _HomeScreenState extends State<HomeScreen> {
               (context) => AlertDialog(
                 backgroundColor: ThemeProvider.getBackgroundColor(),
                 title: Text(
-                  'Delete Transaction',
+                  AppLocalizations.of(context).t('delete_transaction_title'),
                   style: TextStyle(color: ThemeProvider.getTextColor()),
                 ),
                 content: Text(
-                  'Are you sure you want to delete this transaction?',
+                  AppLocalizations.of(context).t('delete_transaction_confirm'),
                   style: TextStyle(color: ThemeProvider.getTextColor()),
                 ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
                     child: Text(
-                      'Cancel',
+                      AppLocalizations.of(context).t('cancel'),
                       style: TextStyle(color: ThemeProvider.getPrimaryColor()),
                     ),
                   ),
@@ -544,7 +645,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       backgroundColor: Colors.red,
                     ),
                     child: Text(
-                      'Delete',
+                      AppLocalizations.of(context).t('delete'),
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
@@ -562,7 +663,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Transaction deleted'),
+            content: Text(
+              AppLocalizations.of(context).t('transaction_deleted'),
+            ),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 2),
           ),
@@ -606,7 +709,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Text(
-              '${isIncome ? '+' : '-'}\$${transaction.amount.toStringAsFixed(2)}',
+              '${isIncome ? '+' : '-'}${CurrencyService.instance.formatAmount(transaction.amount, inputCurrency: transaction.inputCurrency)}',
               style: TextStyle(
                 color: isIncome ? Colors.green : Colors.red,
                 fontSize: 16,
@@ -634,7 +737,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Category "${category.name}" added successfully!'),
+        content: Text(
+          AppLocalizations.of(
+            context,
+          ).t('category_added').replaceFirst('{name}', category.name),
+        ),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 2),
       ),
@@ -651,7 +758,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$categoryName removed successfully!'),
+        content: Text(
+          AppLocalizations.of(
+            context,
+          ).t('category_removed').replaceFirst('{name}', categoryName),
+        ),
         backgroundColor: Colors.red,
         duration: Duration(seconds: 2),
       ),
@@ -691,11 +802,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Transaction added successfully!'),
+        content: Text(AppLocalizations.of(context).t('transaction_added')),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 2),
       ),
     );
+
+    // Optionally sync this new transaction to Telegram bot
+    () async {
+      final auto = await loadTelegramAutoSync();
+      if (!auto) return;
+
+      final botUrl = await loadTelegramBotUrl();
+      final sync = TelegramSyncService(baseUrl: botUrl);
+      final pushed = await sync.pushTransaction(transaction);
+      if (pushed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Transaction pushed to Telegram bot')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to push to Telegram bot')),
+        );
+      }
+    }();
   }
 
   void _showAddTransactionDialog() {
@@ -723,7 +853,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Transaction confirmed! Balance updated.'),
+                  content: Text(
+                    AppLocalizations.of(context).t('transaction_confirmed'),
+                  ),
                   backgroundColor: Colors.green,
                   duration: Duration(seconds: 2),
                 ),
@@ -740,7 +872,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Transaction rejected and removed.'),
+                  content: Text(
+                    AppLocalizations.of(context).t('transaction_rejected'),
+                  ),
                   backgroundColor: Colors.orange,
                   duration: Duration(seconds: 2),
                 ),
@@ -762,7 +896,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('✓ ${transaction.title} confirmed! Balance updated.'),
+        content: Text(
+          AppLocalizations.of(context)
+              .t('transaction_confirmed_with_title')
+              .replaceFirst('{title}', transaction.title),
+        ),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 2),
       ),
@@ -781,7 +919,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('✗ ${transaction.title} rejected.'),
+        content: Text(
+          AppLocalizations.of(context)
+              .t('transaction_rejected_with_title')
+              .replaceFirst('{title}', transaction.title),
+        ),
         backgroundColor: Colors.orange,
         duration: Duration(seconds: 2),
       ),

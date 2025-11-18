@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:app/models/themes.dart';
+import 'package:app/services/currency_service.dart';
 
 class SummaryCard extends StatelessWidget {
   final String title;
   final double amount;
   final Color color;
   final IconData icon;
+  final String? inputCurrency;
 
   const SummaryCard({
     super.key,
@@ -13,6 +15,7 @@ class SummaryCard extends StatelessWidget {
     required this.amount,
     required this.color,
     required this.icon,
+    this.inputCurrency,
   });
 
   @override
@@ -46,7 +49,10 @@ class SummaryCard extends StatelessWidget {
           ),
           SizedBox(height: 4),
           Text(
-            '\$${amount.toStringAsFixed(2)}',
+            CurrencyService.instance.formatAmount(
+              amount,
+              inputCurrency: inputCurrency,
+            ),
             style: TextStyle(
               color: ThemeProvider.getTextColor(),
               fontSize: 16,

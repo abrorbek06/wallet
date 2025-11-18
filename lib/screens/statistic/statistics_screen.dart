@@ -8,7 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:app/functions/category_managment.dart';
 import 'package:app/models/models.dart';
 import 'package:app/models/storage.dart';
+import 'package:app/services/exchange_rate_service.dart';
 import 'package:app/models/themes.dart';
+import 'package:app/l10n/app_localizations.dart';
+import 'package:app/services/currency_service.dart';
 
 import 'widgets/charts/category_list_item.dart';
 import 'widgets/recent_transactions.dart';
@@ -17,25 +20,23 @@ import 'widgets/summary_card.dart';
 class StatisticsScreen extends StatefulWidget {
   final List<Transaction> transactions;
 
-  const StatisticsScreen({
-    super.key,
-    required this.transactions,
-  });
+  const StatisticsScreen({super.key, required this.transactions});
 
   @override
   _StatisticsScreenState createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with TickerProviderStateMixin {
+class _StatisticsScreenState extends State<StatisticsScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
-  String _selectedPeriod = 'This Month';
+  String _selectedPeriod = 'this_month';
 
   final List<String> _periods = [
-    'This Week',
-    'This Month',
-    'Last 3 Months',
-    'This Year',
-    'All Time'
+    'this_week',
+    'this_month',
+    'last_3_months',
+    'this_year',
+    'all_time',
   ];
 
   @override
@@ -62,7 +63,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
         backgroundColor: ThemeProvider.getBackgroundColor(),
         elevation: 0,
         title: Text(
-          'Statistics',
+          AppLocalizations.of(context).t('statistics'),
           style: TextStyle(
             color: ThemeProvider.getTextColor(),
             fontWeight: FontWeight.w600,
@@ -73,28 +74,41 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
           PopupMenuButton<String>(
             icon: Icon(Icons.date_range, color: ThemeProvider.getTextColor()),
             onSelected: (value) => setState(() => _selectedPeriod = value),
-            itemBuilder: (context) => _periods.map((period) {
-              return PopupMenuItem<String>(
-                value: period,
-                child: Row(
-                  children: [
-                    Icon(
-                      _selectedPeriod == period ? Icons.check : Icons.calendar_today,
-                      color: _selectedPeriod == period ? ThemeProvider.getPrimaryColor() : Colors.grey,
-                      size: 20,
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      period,
-                      style: TextStyle(
-                        color: _selectedPeriod == period ? ThemeProvider.getPrimaryColor() : ThemeProvider.getTextColor(),
-                        fontWeight: _selectedPeriod == period ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+            itemBuilder:
+                (context) =>
+                    _periods.map((period) {
+                      return PopupMenuItem<String>(
+                        value: period,
+                        child: Row(
+                          children: [
+                            Icon(
+                              _selectedPeriod == period
+                                  ? Icons.check
+                                  : Icons.calendar_today,
+                              color:
+                                  _selectedPeriod == period
+                                      ? ThemeProvider.getPrimaryColor()
+                                      : Colors.grey,
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              AppLocalizations.of(context).t(period),
+                              style: TextStyle(
+                                color:
+                                    _selectedPeriod == period
+                                        ? ThemeProvider.getPrimaryColor()
+                                        : ThemeProvider.getTextColor(),
+                                fontWeight:
+                                    _selectedPeriod == period
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
           ),
         ],
       ),
@@ -123,15 +137,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
               tabs: [
                 Tab(
                   icon: Icon(Icons.pie_chart, size: 20),
-                  text: 'Overview',
+                  text: AppLocalizations.of(context).t('overview'),
                 ),
                 Tab(
                   icon: Icon(Icons.trending_up, size: 20),
-                  text: 'Income',
+                  text: AppLocalizations.of(context).t('income'),
                 ),
                 Tab(
                   icon: Icon(Icons.trending_down, size: 20),
-                  text: 'Expenses',
+                  text: AppLocalizations.of(context).t('expenses'),
                 ),
               ],
             ),
@@ -155,8 +169,23 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
 
   Widget _buildSummaryCards() {
     final filteredTransactions = _getFilteredTransactions();
-    final totalIncome = _calculateTotalIncome(filteredTransactions);
-    final totalExpense = _calculateTotalExpense(filteredTransactions);
+    final displayCurrencyStr =
+        CurrencyService.instance.currency == Currency.USD ? 'USD' : 'UZS';
+
+    double convertAmount(transaction) {
+      return ExchangeRateService.convert(
+        transaction.amount,
+        transaction.inputCurrency,
+        displayCurrencyStr,
+      );
+    }
+
+    final totalIncome = filteredTransactions
+        .where((t) => _isIncomeTransaction(t))
+        .fold(0.0, (sum, t) => sum + convertAmount(t));
+    final totalExpense = filteredTransactions
+        .where((t) => !_isIncomeTransaction(t))
+        .fold(0.0, (sum, t) => sum + convertAmount(t));
     final balance = totalIncome - totalExpense;
 
     return Container(
@@ -165,28 +194,31 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
         children: [
           Expanded(
             child: SummaryCard(
-              title: 'Total Income',
+              title: AppLocalizations.of(context).t('total_income'),
               amount: totalIncome,
               color: Colors.green,
               icon: Icons.trending_up,
+              inputCurrency: displayCurrencyStr,
             ),
           ),
           SizedBox(width: 12),
           Expanded(
             child: SummaryCard(
-              title: 'Total Expense',
+              title: AppLocalizations.of(context).t('total_expense'),
               amount: totalExpense,
               color: Colors.red,
               icon: Icons.trending_down,
+              inputCurrency: displayCurrencyStr,
             ),
           ),
           SizedBox(width: 12),
           Expanded(
             child: SummaryCard(
-              title: 'Balance',
+              title: AppLocalizations.of(context).t('balance'),
               amount: balance,
               color: balance >= 0 ? Colors.blue : Colors.orange,
               icon: balance >= 0 ? Icons.account_balance_wallet : Icons.warning,
+              inputCurrency: displayCurrencyStr,
             ),
           ),
         ],
@@ -215,7 +247,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
           SizedBox(height: 24),
           RecentTransactionsSummary(
             transactions: filteredTransactions,
-            allTransactions: widget.transactions,
+            // Pass filteredTransactions as "allTransactions" so counts and
+            // pagination reflect only the transactions included in analytics
+            // (i.e., exclude unconfirmed scheduled transactions).
+            allTransactions: filteredTransactions,
             showAllTransactions: _showAllTransactions,
             showTransactionDetails: _showTransactionDetails,
           ),
@@ -226,7 +261,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
 
   Widget _buildIncomeTab() {
     final incomeByCategory = _getIncomeByCategory();
-    final totalIncome = incomeByCategory.values.fold(0.0, (sum, amount) => sum + amount);
+    final totalIncome = incomeByCategory.values.fold(
+      0.0,
+      (sum, amount) => sum + amount,
+    );
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(20),
@@ -242,7 +280,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
 
   Widget _buildExpenseTab() {
     final expenseByCategory = _getExpenseByCategory();
-    final totalExpense = expenseByCategory.values.fold(0.0, (sum, amount) => sum + amount);
+    final totalExpense = expenseByCategory.values.fold(
+      0.0,
+      (sum, amount) => sum + amount,
+    );
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(20),
@@ -256,7 +297,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
     );
   }
 
-  Widget _buildIncomeCategoriesList(Map<String, double> incomeByCategory, double totalIncome) {
+  Widget _buildIncomeCategoriesList(
+    Map<String, double> incomeByCategory,
+    double totalIncome,
+  ) {
     if (incomeByCategory.isEmpty) {
       return _buildEmptyCategoriesList('income');
     }
@@ -271,7 +315,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Income Breakdown',
+            AppLocalizations.of(context).t('income_breakdown'),
             style: TextStyle(
               color: ThemeProvider.getTextColor(),
               fontSize: 18,
@@ -280,10 +324,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
           ),
           SizedBox(height: 16),
           ...incomeByCategory.entries.map((entry) {
-            final category = CategoryManager.getCategoryById(entry.key) ??
-                Category(id: '', name: 'Other', icon: Icons.category, 
-                        color: Colors.grey, type: 'income');
-            final percentage = totalIncome > 0 ? (entry.value / totalIncome) * 100 : 0.0;
+            final category =
+                CategoryManager.getCategoryById(entry.key) ??
+                Category(
+                  id: '',
+                  name: AppLocalizations.of(context).t('other'),
+                  icon: Icons.category,
+                  color: Colors.grey,
+                  type: 'income',
+                );
+            final percentage =
+                totalIncome > 0 ? (entry.value / totalIncome) * 100 : 0.0;
 
             return CategoryListItem(
               category: category,
@@ -296,7 +347,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
     );
   }
 
-  Widget _buildExpenseCategoriesList(Map<String, double> expenseByCategory, double totalExpense) {
+  Widget _buildExpenseCategoriesList(
+    Map<String, double> expenseByCategory,
+    double totalExpense,
+  ) {
     if (expenseByCategory.isEmpty) {
       return _buildEmptyCategoriesList('expense');
     }
@@ -311,7 +365,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Expense Breakdown',
+            AppLocalizations.of(context).t('expense_breakdown'),
             style: TextStyle(
               color: ThemeProvider.getTextColor(),
               fontSize: 18,
@@ -320,10 +374,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
           ),
           SizedBox(height: 16),
           ...expenseByCategory.entries.map((entry) {
-            final category = CategoryManager.getCategoryById(entry.key) ??
-                Category(id: '', name: 'Other', icon: Icons.category, 
-                        color: Colors.grey, type: 'expense');
-            final percentage = totalExpense > 0 ? (entry.value / totalExpense) * 100 : 0.0;
+            final category =
+                CategoryManager.getCategoryById(entry.key) ??
+                Category(
+                  id: '',
+                  name: AppLocalizations.of(context).t('other'),
+                  icon: Icons.category,
+                  color: Colors.grey,
+                  type: 'expense',
+                );
+            final percentage =
+                totalExpense > 0 ? (entry.value / totalExpense) * 100 : 0.0;
 
             return CategoryListItem(
               category: category,
@@ -344,12 +405,20 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
         borderRadius: BorderRadius.circular(16),
       ),
       child: Center(
-        child: Text(
-          'No $type categories to display',
-          style: TextStyle(
-            color: Colors.grey[400],
-            fontSize: 16,
-          ),
+        child: Builder(
+          builder: (context) {
+            final typeLabel =
+                type == 'income'
+                    ? AppLocalizations.of(context).t('income')
+                    : AppLocalizations.of(context).t('expense');
+            final msg = AppLocalizations.of(
+              context,
+            ).t('no_categories_to_display').replaceFirst('{type}', typeLabel);
+            return Text(
+              msg,
+              style: TextStyle(color: Colors.grey[400], fontSize: 16),
+            );
+          },
         ),
       ),
     );
@@ -374,12 +443,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
         startDate = DateTime(now.year, 1, 1);
         break;
       default:
-        return widget.transactions;
+        // 'All Time' - include all dates but still exclude unconfirmed scheduled tx
+        startDate = DateTime.fromMillisecondsSinceEpoch(0);
     }
 
+    // Exclude scheduled transactions that have not yet been settled/confirmed
     return widget.transactions.where((transaction) {
-      return transaction.date.isAfter(startDate) || 
-             transaction.date.isAtSameMomentAs(startDate);
+      final withinRange =
+          transaction.date.isAfter(startDate) ||
+          transaction.date.isAtSameMomentAs(startDate);
+      final isUnconfirmedScheduled =
+          transaction.isScheduled && !transaction.isSettled;
+      return withinRange && !isUnconfirmedScheduled;
     }).toList();
   }
 
@@ -402,19 +477,23 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
     Map<String, double> incomeByCategory = {};
     for (var transaction in incomeTransactions) {
       incomeByCategory[transaction.categoryId] =
-          (incomeByCategory[transaction.categoryId] ?? 0.0) + transaction.amount;
+          (incomeByCategory[transaction.categoryId] ?? 0.0) +
+          transaction.amount;
     }
     return incomeByCategory;
   }
 
   Map<String, double> _getExpenseByCategory() {
     final filteredTransactions = _getFilteredTransactions();
-    final expenseTransactions = filteredTransactions.where((t) => !_isIncomeTransaction(t));
+    final expenseTransactions = filteredTransactions.where(
+      (t) => !_isIncomeTransaction(t),
+    );
 
     Map<String, double> expenseByCategory = {};
     for (var transaction in expenseTransactions) {
       expenseByCategory[transaction.categoryId] =
-          (expenseByCategory[transaction.categoryId] ?? 0.0) + transaction.amount;
+          (expenseByCategory[transaction.categoryId] ?? 0.0) +
+          transaction.amount;
     }
     return expenseByCategory;
   }
@@ -425,16 +504,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
 
     Set<DateTime> uniqueDates = {};
     for (var transaction in filteredTransactions) {
-      uniqueDates.add(DateTime(
-        transaction.date.year, 
-        transaction.date.month, 
-        transaction.date.day
-      ));
+      uniqueDates.add(
+        DateTime(
+          transaction.date.year,
+          transaction.date.month,
+          transaction.date.day,
+        ),
+      );
     }
 
     final sortedDates = uniqueDates.toList()..sort();
-    return index >= 0 && index < sortedDates.length 
-        ? sortedDates[index] 
+    return index >= 0 && index < sortedDates.length
+        ? sortedDates[index]
         : DateTime.now();
   }
 
@@ -445,186 +526,292 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          List<Transaction> filteredTransactions;
-          if (_allTransactionsFilter == 'Income') {
-            filteredTransactions = widget.transactions.where((t) => _isIncomeTransaction(t)).toList();
-          } else if (_allTransactionsFilter == 'Expense') {
-            filteredTransactions = widget.transactions.where((t) => !_isIncomeTransaction(t)).toList();
-          } else {
-            filteredTransactions = widget.transactions;
-          }
-          // Sort by most recent first
-          filteredTransactions.sort((a, b) => b.date.compareTo(a.date));
-          return DraggableScrollableSheet(
-            initialChildSize: 0.9,
-            minChildSize: 0.5,
-            maxChildSize: 0.95,
-            builder: (context, scrollController) => Container(
-              decoration: BoxDecoration(
-                color: ThemeProvider.getBackgroundColor(),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    margin: EdgeInsets.only(top: 12, bottom: 20),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[400],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'All Transactions',
-                          style: TextStyle(
-                            color: ThemeProvider.getTextColor(),
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
+      builder:
+          (context) => StatefulBuilder(
+            builder: (context, setModalState) {
+              List<Transaction> filteredTransactions;
+              if (_allTransactionsFilter == 'Income') {
+                filteredTransactions =
+                    widget.transactions
+                        .where(
+                          (t) =>
+                              _isIncomeTransaction(t) &&
+                              !(t.isScheduled && !t.isSettled),
+                        )
+                        .toList();
+              } else if (_allTransactionsFilter == 'Expense') {
+                filteredTransactions =
+                    widget.transactions
+                        .where(
+                          (t) =>
+                              !_isIncomeTransaction(t) &&
+                              !(t.isScheduled && !t.isSettled),
+                        )
+                        .toList();
+              } else {
+                // Exclude unconfirmed scheduled transactions (show only settled ones)
+                filteredTransactions =
+                    widget.transactions
+                        .where((t) => !(t.isScheduled && !t.isSettled))
+                        .toList();
+              }
+              // Sort by most recent first
+              filteredTransactions.sort((a, b) => b.date.compareTo(a.date));
+              return DraggableScrollableSheet(
+                initialChildSize: 0.9,
+                minChildSize: 0.5,
+                maxChildSize: 0.95,
+                builder:
+                    (context, scrollController) => Container(
+                      decoration: BoxDecoration(
+                        color: ThemeProvider.getBackgroundColor(),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(20),
                         ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.close, color: ThemeProvider.getTextColor()),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Filter Row
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    child: Row(
-                      children: [
-                        Text('Filter:', style: TextStyle(color: ThemeProvider.getTextColor(), fontWeight: FontWeight.w500)),
-                        SizedBox(width: 12),
-                        DropdownButton<String>(
-                          value: _allTransactionsFilter,
-                          dropdownColor: ThemeProvider.getCardColor(),
-                          items: ['All', 'Income', 'Expense'].map((type) {
-                            return DropdownMenuItem<String>(
-                              value: type,
-                              child: Text(type, style: TextStyle(color: ThemeProvider.getTextColor())),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setModalState(() {
-                                _allTransactionsFilter = value;
-                              });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: filteredTransactions.length,
-                      itemBuilder: (context, index) {
-                        final transaction = filteredTransactions[index];
-                        return Dismissible(
-                          key: Key(transaction.id),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: EdgeInsets.symmetric(horizontal: 20),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            margin: EdgeInsets.only(top: 12, bottom: 20),
+                            width: 40,
+                            height: 4,
                             decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.grey[400],
+                              borderRadius: BorderRadius.circular(2),
                             ),
-                            child: Icon(Icons.delete, color: Colors.white),
                           ),
-                          confirmDismiss: (direction) async {
-                            return await showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                backgroundColor: ThemeProvider.getBackgroundColor(),
-                                title: Text('Delete Transaction'),
-                                content: Text('Are you sure you want to delete this transaction?'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.of(context).pop(false),
-                                    child: Text('Cancel'),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  ).t('all_transactions'),
+                                  style: TextStyle(
+                                    color: ThemeProvider.getTextColor(),
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  ElevatedButton(
-                                    onPressed: () => Navigator.of(context).pop(true),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red),
-                                    child: Text('Delete', style: TextStyle(color: Colors.white)),
+                                ),
+                                IconButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: Icon(
+                                    Icons.close,
+                                    color: ThemeProvider.getTextColor(),
                                   ),
-                                ],
-                              ),
-                            );
-                          },
-                          onDismissed: (direction) {
-                            setState(() {
-                              widget.transactions.removeWhere((t) => t.id == transaction.id);
-                              saveTransactions(widget.transactions);
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Transaction deleted'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          },
-                          child: TransactionItem(
-                            transaction: transaction,
-                            isLast: index == filteredTransactions.length - 1,
-                            onTap: () => _showTransactionDetails(transaction),
+                                ),
+                              ],
+                            ),
                           ),
-                        );
-                      },
+                          // Filter Row
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  AppLocalizations.of(context).t('filter'),
+                                  style: TextStyle(
+                                    color: ThemeProvider.getTextColor(),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                DropdownButton<String>(
+                                  value: _allTransactionsFilter,
+                                  dropdownColor: ThemeProvider.getCardColor(),
+                                  items:
+                                      ['All', 'Income', 'Expense'].map((type) {
+                                        final key =
+                                            type == 'All'
+                                                ? 'all'
+                                                : (type == 'Income'
+                                                    ? 'income'
+                                                    : 'expense');
+                                        return DropdownMenuItem<String>(
+                                          value: type,
+                                          child: Text(
+                                            AppLocalizations.of(context).t(key),
+                                            style: TextStyle(
+                                              color:
+                                                  ThemeProvider.getTextColor(),
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setModalState(() {
+                                        _allTransactionsFilter = value;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              controller: scrollController,
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              itemCount: filteredTransactions.length,
+                              itemBuilder: (context, index) {
+                                final transaction = filteredTransactions[index];
+                                return Dismissible(
+                                  key: Key(transaction.id),
+                                  direction: DismissDirection.endToStart,
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.delete,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  confirmDismiss: (direction) async {
+                                    return await showDialog(
+                                      context: context,
+                                      builder:
+                                          (context) => AlertDialog(
+                                            backgroundColor:
+                                                ThemeProvider.getBackgroundColor(),
+                                            title: Text(
+                                              AppLocalizations.of(
+                                                context,
+                                              ).t('delete_transaction_title'),
+                                            ),
+                                            content: Text(
+                                              'Are you sure you want to delete this transaction?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed:
+                                                    () => Navigator.of(
+                                                      context,
+                                                    ).pop(false),
+                                                child: Text('Cancel'),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed:
+                                                    () => Navigator.of(
+                                                      context,
+                                                    ).pop(true),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                                child: Text(
+                                                  'Delete',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                    );
+                                  },
+                                  onDismissed: (direction) {
+                                    setState(() {
+                                      widget.transactions.removeWhere(
+                                        (t) => t.id == transaction.id,
+                                      );
+                                      saveTransactions(widget.transactions);
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          AppLocalizations.of(
+                                            context,
+                                          ).t('transaction_deleted'),
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  },
+                                  child: TransactionItem(
+                                    transaction: transaction,
+                                    isLast:
+                                        index ==
+                                        filteredTransactions.length - 1,
+                                    onTap:
+                                        () => _showTransactionDetails(
+                                          transaction,
+                                        ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
     );
   }
 
   void _showTransactionDetails(Transaction transaction) {
     final isIncome = _isIncomeTransaction(transaction);
-    final category = CategoryManager.getCategoryById(transaction.categoryId) ??
-        Category(id: '', name: 'Other', icon: Icons.category, 
-                color: Colors.grey, type: isIncome ? 'income' : 'expense');
+    final category =
+        CategoryManager.getCategoryById(transaction.categoryId) ??
+        Category(
+          id: '',
+          name: 'Other',
+          icon: Icons.category,
+          color: Colors.grey,
+          type: isIncome ? 'income' : 'expense',
+        );
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: ThemeProvider.getCardColor(),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          padding: EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildTransactionHeader(category, isIncome),
-              SizedBox(height: 24),
-              _buildTransactionDetailRow('Title', transaction.title),
-              _buildTransactionDetailRow('Category', category.name),
-              _buildTransactionDetailRow('Amount', '\$${transaction.amount.toStringAsFixed(2)}'),
-              _buildTransactionDetailRow('Type', isIncome ? 'Income' : 'Expense'),
-              _buildTransactionDetailRow('Date', '${transaction.date.month}/${transaction.date.day}/${transaction.date.year}'),
-              _buildTransactionDetailRow('Time', '${transaction.date.hour.toString().padLeft(2, '0')}:${transaction.date.minute.toString().padLeft(2, '0')}'),
-              SizedBox(height: 24),
-              _buildCloseButton(),
-            ],
+      builder:
+          (context) => Dialog(
+            backgroundColor: ThemeProvider.getCardColor(),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTransactionHeader(category, isIncome),
+                  SizedBox(height: 24),
+                  _buildTransactionDetailRow('Title', transaction.title),
+                  _buildTransactionDetailRow('Category', category.name),
+                  _buildTransactionDetailRow(
+                    'Amount',
+                    CurrencyService.instance.formatAmount(transaction.amount),
+                  ),
+                  _buildTransactionDetailRow(
+                    'Type',
+                    isIncome ? 'Income' : 'Expense',
+                  ),
+                  _buildTransactionDetailRow(
+                    'Date',
+                    '${transaction.date.month}/${transaction.date.day}/${transaction.date.year}',
+                  ),
+                  _buildTransactionDetailRow(
+                    'Time',
+                    '${transaction.date.hour.toString().padLeft(2, '0')}:${transaction.date.minute.toString().padLeft(2, '0')}',
+                  ),
+                  SizedBox(height: 24),
+                  _buildCloseButton(),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 
@@ -645,7 +832,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Transaction Details',
+                AppLocalizations.of(context).t('transaction_details'),
                 style: TextStyle(
                   color: ThemeProvider.getTextColor(),
                   fontSize: 20,
@@ -653,7 +840,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
                 ),
               ),
               Text(
-                isIncome ? 'Income Transaction' : 'Expense Transaction',
+                isIncome
+                    ? '${AppLocalizations.of(context).t('income')} ${AppLocalizations.of(context).t('transaction')}'
+                    : '${AppLocalizations.of(context).t('expense')} ${AppLocalizations.of(context).t('transaction')}',
                 style: TextStyle(
                   color: isIncome ? Colors.green : Colors.red,
                   fontSize: 14,
@@ -697,9 +886,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
         ],
       ),
     );
-    
   }
-  
 
   Widget _buildCloseButton() {
     return SizedBox(
@@ -714,7 +901,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
           ),
         ),
         child: Text(
-          'Close',
+          AppLocalizations.of(context).t('close'),
           style: TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -739,9 +926,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> with TickerProvider
     Map<DateTime, double> dailyBalanceChanges = {};
 
     for (var transaction in filteredTransactions) {
-      final dateKey = DateTime(transaction.date.year, transaction.date.month, transaction.date.day);
-      final amount = _isIncomeTransaction(transaction) ? transaction.amount.toDouble() : -transaction.amount.toDouble();
-      dailyBalanceChanges[dateKey] = (dailyBalanceChanges[dateKey] ?? 0.0) + amount;
+      final dateKey = DateTime(
+        transaction.date.year,
+        transaction.date.month,
+        transaction.date.day,
+      );
+      final amount =
+          _isIncomeTransaction(transaction)
+              ? transaction.amount.toDouble()
+              : -transaction.amount.toDouble();
+      dailyBalanceChanges[dateKey] =
+          (dailyBalanceChanges[dateKey] ?? 0.0) + amount;
     }
 
     // Convert to cumulative balance over time
