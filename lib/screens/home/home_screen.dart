@@ -18,7 +18,6 @@ import '../settings/settings_screen.dart';
 import '../../l10n/app_localizations.dart';
 import 'package:app/services/currency_service.dart';
 import 'package:app/services/exchange_rate_service.dart';
-import '../../services/telegram_sync_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final void Function(Locale)? onLocaleChanged;
@@ -51,21 +50,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       transactions = loaded;
     });
-    // Optionally fetch transactions from Telegram bot to keep in sync
-    () async {
-      final auto = await loadTelegramAutoSync();
-      if (!auto) return;
-      final botUrl = await loadTelegramBotUrl();
-      final sync = TelegramSyncService(baseUrl: botUrl);
-      final added = await sync.fetchAndMergeTransactions();
-      if (added > 0) {
-        // Reload transactions after merge
-        final refreshed = await loadTransactions();
-        setState(() {
-          transactions = refreshed;
-        });
-      }
-    }();
     // Refresh exchange rate when loading transactions
     ExchangeRateService.fetchExchangeRate();
 
@@ -807,25 +791,6 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: Duration(seconds: 2),
       ),
     );
-
-    // Optionally sync this new transaction to Telegram bot
-    () async {
-      final auto = await loadTelegramAutoSync();
-      if (!auto) return;
-
-      final botUrl = await loadTelegramBotUrl();
-      final sync = TelegramSyncService(baseUrl: botUrl);
-      final pushed = await sync.pushTransaction(transaction);
-      if (pushed) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Transaction pushed to Telegram bot')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to push to Telegram bot')),
-        );
-      }
-    }();
   }
 
   void _showAddTransactionDialog() {

@@ -9,8 +9,6 @@ const _dailyLimitCurrencyKey =
 const _dailyLimitWarnKey = 'daily_limit_warn_date';
 const _transactionsBackupKey = 'transactions_backup';
 const _transactionsBackupTimeKey = 'transactions_backup_time';
-const _telegramAutoSyncKey = 'telegram_auto_sync';
-const _telegramBotUrlKey = 'telegram_bot_url';
 
 /// Central helper to get SharedPreferences instance (kept for readability and
 /// to allow future migration hooks in one place).
@@ -198,45 +196,6 @@ Future<void> saveDailyLimitWarnDate(String? isoDate) async {
   } catch (e) {
     // ignore: avoid_print
     print('saveDailyLimitWarnDate error: $e');
-  }
-}
-
-// Telegram integration preferences
-Future<void> saveTelegramAutoSync(bool enabled) async {
-  try {
-    final prefs = await _prefs();
-    await prefs.setBool(_telegramAutoSyncKey, enabled);
-  } catch (e) {
-    print('saveTelegramAutoSync error: $e');
-  }
-}
-
-Future<bool> loadTelegramAutoSync() async {
-  try {
-    final prefs = await _prefs();
-    return prefs.getBool(_telegramAutoSyncKey) ?? false;
-  } catch (e) {
-    print('loadTelegramAutoSync error: $e');
-    return false;
-  }
-}
-
-Future<void> saveTelegramBotUrl(String url) async {
-  try {
-    final prefs = await _prefs();
-    await prefs.setString(_telegramBotUrlKey, url);
-  } catch (e) {
-    print('saveTelegramBotUrl error: $e');
-  }
-}
-
-Future<String?> loadTelegramBotUrl() async {
-  try {
-    final prefs = await _prefs();
-    return prefs.getString(_telegramBotUrlKey);
-  } catch (e) {
-    print('loadTelegramBotUrl error: $e');
-    return null;
   }
 }
 

@@ -7,9 +7,6 @@ import '../../services/currency_service.dart';
 import '../../models/models.dart';
 import '../../models/themes.dart';
 import '../../functions/category_managment.dart';
-import '../../services/telegram_service.dart';
-import '../../services/telegram_sync_service.dart';
-import '../../models/storage.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String currentTheme;
@@ -32,22 +29,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _telegramAutoSync = false;
-  final TextEditingController _telegramUrlController = TextEditingController();
   @override
   void initState() {
     super.initState();
     CategoryManager.loadSavedCategories();
-    _loadTelegramSettings();
-  }
-
-  void _loadTelegramSettings() async {
-    final enabled = await loadTelegramAutoSync();
-    final url = await loadTelegramBotUrl();
-    setState(() {
-      _telegramAutoSync = enabled;
-      _telegramUrlController.text = url ?? 'http://127.0.0.1:5001';
-    });
   }
 
   @override
@@ -122,93 +107,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
           InfoSection(onRateApp: _rateApp, onHelpPressed: _showFeedbackDialog),
           const SizedBox(height: 24),
-          // Telegram Bot Sync
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: ThemeProvider.getCardColor(),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Telegram Sync',
-                      style: TextStyle(
-                        color: ThemeProvider.getTextColor(),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Switch(
-                      value: _telegramAutoSync,
-                      onChanged: (v) async {
-                        await saveTelegramAutoSync(v);
-                        setState(() => _telegramAutoSync = v);
-                      },
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                TextField(
-                  controller: _telegramUrlController,
-                  decoration: InputDecoration(
-                    labelText: 'Bot Server URL',
-                    hintText: 'http://127.0.0.1:5001',
-                  ),
-                  onSubmitted: (val) async {
-                    await saveTelegramBotUrl(val.trim());
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Saved Telegram bot URL')),
-                    );
-                  },
-                ),
-                SizedBox(height: 8),
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () async {
-                        final sync = TelegramSyncService(
-                          baseUrl: _telegramUrlController.text.trim(),
-                        );
-                        final added = await sync.fetchAndMergeTransactions();
-                        if (added > 0) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Imported $added transactions from Telegram',
-                              ),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('No new transactions found'),
-                            ),
-                          );
-                        }
-                      },
-                      child: Text('Sync Now'),
-                    ),
-                    SizedBox(width: 12),
-                    TextButton(
-                      onPressed: () async {
-                        await saveTelegramBotUrl(
-                          _telegramUrlController.text.trim(),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Saved Telegram bot URL')),
-                        );
-                      },
-                      child: Text('Save'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -366,9 +264,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 TextButton(
                   onPressed: () async {
-                    final comment = commentController.text.trim();
-                    final msg =
-                        'App Rating: $rating/5\n${comment.isNotEmpty ? 'Comment: $comment\n' : ''}';
                     try {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -377,7 +272,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                       );
-                      await TelegramService.sendFeedback(msg);
+                      // TODO: Send feedback to backend service
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -452,7 +347,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextButton(
               onPressed: () async {
                 final msg = messageController.text.trim();
-                final contact = contactController.text.trim();
                 if (msg.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -465,10 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   return;
                 }
 
-                final fullMessage =
-                    'Feedback:\n$msg\n${contact.isNotEmpty ? '\nContact: $contact' : ''}';
-
-                // Try sending via TelegramService
+                // TODO: Send feedback to backend service
                 try {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -477,7 +368,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   );
-                  await TelegramService.sendFeedback(fullMessage);
                   Navigator.pop(context); // close dialog
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 /// Exchange rate service for converting between USD and UZS
 /// Fetches live exchange rates from API
@@ -21,16 +22,21 @@ class ExchangeRateService {
         return true; // Using cached rate
       }
 
-      // Try to fetch from multiple sources
-      final rates = await Future.any([
-        _fetchFromCBU(), // Central Bank of Uzbekistan
-        _fetchFromOpenExchangeRates(),
-      ]);
+      // Try to fetch from multiple sources with timeout
+      try {
+        final rates = await Future.any([
+          _fetchFromCBU(), // Central Bank of Uzbekistan
+          _fetchFromOpenExchangeRates(),
+        ]).timeout(const Duration(seconds: 10));
 
-      if (rates > 0) {
-        _usdToUzsRate = rates;
-        _lastFetchTime = DateTime.now();
-        return true;
+        if (rates > 0) {
+          _usdToUzsRate = rates;
+          _lastFetchTime = DateTime.now();
+          return true;
+        }
+      } on TimeoutException {
+        print('Exchange rate fetch timed out, using cached rate');
+        return _lastFetchTime != null; // Return true if we have any cached rate
       }
     } catch (e) {
       print('Error fetching exchange rate: $e');
@@ -41,35 +47,43 @@ class ExchangeRateService {
 
   /// Fetch from Central Bank of Uzbekistan API
   static Future<double> _fetchFromCBU() async {
-    final response = await http
-        .get(Uri.parse('https://nbu.uz/uz/exchange-rates/json/'))
-        .timeout(Duration(seconds: 5));
+    try {
+      final response = await http
+          .get(Uri.parse('https://nbu.uz/uz/exchange-rates/json/'))
+          .timeout(const Duration(seconds: 5));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as List;
-      for (var currency in data) {
-        if (currency['code'] == 'USD') {
-          final rate = double.parse(currency['cb_price'].toString());
-          return rate;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as List;
+        for (var currency in data) {
+          if (currency['code'] == 'USD') {
+            final rate = double.parse(currency['cb_price'].toString());
+            return rate;
+          }
         }
       }
+    } catch (e) {
+      print('Error fetching from CBU: $e');
     }
     return -1;
   }
 
   /// Fetch from OpenExchangeRates API (fallback)
   static Future<double> _fetchFromOpenExchangeRates() async {
-    // Using free API endpoint
-    final response = await http
-        .get(Uri.parse('https://open.er-api.com/v6/latest/USD'))
-        .timeout(Duration(seconds: 5));
+    try {
+      // Using free API endpoint
+      final response = await http
+          .get(Uri.parse('https://open.er-api.com/v6/latest/USD'))
+          .timeout(const Duration(seconds: 5));
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['rates'] != null && data['rates']['UZS'] != null) {
-        final rate = double.parse(data['rates']['UZS'].toString());
-        return rate;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['rates'] != null && data['rates']['UZS'] != null) {
+          final rate = double.parse(data['rates']['UZS'].toString());
+          return rate;
+        }
       }
+    } catch (e) {
+      print('Error fetching from OpenExchangeRates: $e');
     }
     return -1;
   }
