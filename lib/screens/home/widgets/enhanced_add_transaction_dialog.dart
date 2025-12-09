@@ -285,35 +285,6 @@ class _AddTransactionDialogState extends State<AddTransactionDialog> {
                       ),
                     ),
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                        bottomLeft: Radius.circular(12),
-                        bottomRight: Radius.circular(7),
-                      ),
-                      border: Border.all(
-                        color: Colors.red.withOpacity(0.3),
-                        style: BorderStyle.solid,
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                      gradient: LinearGradient(
-                        colors: [Colors.amber, Colors.red],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: Text("salom", style: TextStyle()),
-                  ),
                 ],
               ),
             ),
